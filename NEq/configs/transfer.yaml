@@ -5,7 +5,7 @@ run_dir: null
 manual_seed: 0
 resume: 0
 # Change to 0 for single training and 1 for wandb sweep
-wandb_sweep: 1
+wandb_sweep: 0
 
 data_provider:
   dataset: vww

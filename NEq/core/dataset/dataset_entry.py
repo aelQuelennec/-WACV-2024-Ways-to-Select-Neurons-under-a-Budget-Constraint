@@ -108,8 +108,8 @@ def build_dataset():
     else:
         raise NotImplementedError(config.data_provider.dataset)
     
+    # These operations allows for the creation of a small validation dataset from which to compute velocities
     train, validation = split_dataset(train_dataset)
-        
     train, validation = MapDataset(train, ImageTransform()["train"]), MapDataset(validation, ImageTransform()["val"])
 
     return {"train": train, "val": validation, "test": test}

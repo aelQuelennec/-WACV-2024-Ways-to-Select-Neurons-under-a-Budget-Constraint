@@ -1,0 +1,46 @@
+command:
+  - python
+  - ${program}
+method: grid
+metric:
+  goal: maximize
+  name: valid.val/best
+parameters:
+  dataset:
+    distribution: categorical
+    values:
+      - c10
+      - c100
+      - vww
+      - flowers
+      - food
+      - pets
+      - cub
+  initialization:
+    distribution: categorical
+    values:
+      - SU
+      - random
+  manual_seed:
+    distribution: categorical
+    values:
+      - 0
+      - 42
+      - 100
+  net_name:
+    distribution: categorical
+    values:
+      - pre_trained_mbv2
+  neuron_selection:
+    distribution: categorical
+    values:
+      - SU
+      - velocity
+      - random
+  scheme:
+    distribution: categorical
+    values:
+      - scheme_1
+      - scheme_3
+      - scheme_5
+program: NEq/train_classification.py
