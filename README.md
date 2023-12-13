@@ -34,8 +34,8 @@ The corresponding root paths must be modified in the "NEq_configs.yaml" and "NEq
 ## Citation
 
 ```
-@InProceedings{Iancu_2023_WACV,
-    author    = {A\"el Qu\'elennec, Enzo Tartaglione, Pavlo Mozharovskyi, Van-Tam Nguyen},
+@InProceedings{Quelennec_2023_WACV,
+    author    = {Aël Quélennec, Enzo Tartaglione, Pavlo Mozharovskyi, Van-Tam Nguyen},
     title     = {Towards On-device Learning on the Edge: Ways to Select Neurons to Update under a Budget Constraint},
     booktitle = {Proceedings of the IEEE/CVF Winter Conference on Applications of Computer Vision (WACV) Workshops},
     month     = {January},
