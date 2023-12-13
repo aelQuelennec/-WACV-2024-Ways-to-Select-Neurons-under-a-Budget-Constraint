@@ -1,1 +1,2 @@
-# -WACV-2024-Ways-to-Select-Neurons-under-a-Budget-Constraint
+# SU_VS_NEq
+Comparison of "Sparse Update" paradigm with "Neurons at Equilibrium"
