@@ -57,7 +57,6 @@ class Hook:
 
         self.hook = module.register_forward_hook(self.hook_fn)
 
-
     def hook_fn(
         self, module: torch.nn.Module, input: torch.Tensor, output: torch.Tensor
     ) -> None:
@@ -92,14 +91,11 @@ class Hook:
             ] = reshaped_output
             self.total_samples += output.shape[0]
 
-
     def get_samples_activation(self):
         return torch.cat(self.samples_activation)
 
-
     def get_reduced_activation_delta(self):
         return self.activation_deltas / self.total_samples
-
 
     def get_delta_of_delta(self):
         reduced_activation_delta = self.get_reduced_activation_delta()
@@ -107,21 +103,17 @@ class Hook:
 
         return delta_of_delta
 
-
     def get_velocity(self):
         self.velocity += self.get_delta_of_delta()
 
         return self.velocity
 
-
     def update_delta_buffer(self):
         self.delta_buffer = self.get_reduced_activation_delta()
-
 
     def update_velocity(self):
         self.velocity *= self.momentum
         self.velocity -= self.get_delta_of_delta()
-
 
     def reset(self, previous_activations=None):
         self.samples_activation = []
@@ -130,10 +122,8 @@ class Hook:
         if previous_activations is not None:
             self.previous_activations = previous_activations
 
-
     def close(self) -> None:
         self.hook.remove()
-
 
     def activate(self, active):
         self.active = active

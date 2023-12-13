@@ -146,12 +146,13 @@ def update_config_from_wandb(wandb_config):
     config.NEq_config.initialization = wandb_config.initialization
 
     config.net_config.net_name = wandb_config.net_name
-    if config.NEq_config.initialization == 'SU' or config.NEq_config.neuron_selection == 'SU':
+    if (
+        config.NEq_config.initialization == "SU"
+        or config.NEq_config.neuron_selection == "SU"
+    ):
         backward_config = wandb_sweeps_config.net_configs[wandb_config.scheme].SU_scheme
         config.backward_config.n_bias_update = backward_config.n_bias_update
         config.backward_config.weight_update_ratio = backward_config.weight_update_ratio
         config.backward_config.manual_weight_idx = backward_config.manual_weight_idx
-
-    
 
     config.run_dir = f"runs/{wandb_config.dataset}/{wandb_config.net_name}/{wandb_config.initialization}/{wandb_config.neuron_selection}/{wandb_config.scheme}/{wandb_config.manual_seed}"

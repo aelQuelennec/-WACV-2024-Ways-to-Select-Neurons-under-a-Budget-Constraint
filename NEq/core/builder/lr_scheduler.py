@@ -25,8 +25,10 @@ def build_lr_scheduler(optimizer, batch_per_epoch):
             config.run_config.get("lr_step_size", 30) * batch_per_epoch,
             config.run_config.get("lr_step_gamma", 0.1),
         )
-    elif config.run_config.lr_schedule_name == 'multi_step':
-        lr_scheduler = MultiStepLR(optimizer, milestones=[100 * batch_per_epoch, 150 * batch_per_epoch])
+    elif config.run_config.lr_schedule_name == "multi_step":
+        lr_scheduler = MultiStepLR(
+            optimizer, milestones=[100 * batch_per_epoch, 150 * batch_per_epoch]
+        )
     else:
         raise NotImplementedError(config.run_config.lr_schedule_name)
     return lr_scheduler

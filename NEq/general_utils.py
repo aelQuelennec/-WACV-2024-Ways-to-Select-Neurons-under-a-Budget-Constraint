@@ -35,11 +35,11 @@ def cleanup():
 
 
 def change_classifier_head(classifier):
-        classifier = nn.Linear(
-            in_features=classifier.in_features,
-            out_features=config.data_provider.new_num_classes,
-            bias=True,
-        )
+    classifier = nn.Linear(
+        in_features=classifier.in_features,
+        out_features=config.data_provider.new_num_classes,
+        bias=True,
+    )
 
 
 def count_net_num_conv_params(model):

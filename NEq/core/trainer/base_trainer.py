@@ -80,7 +80,6 @@ class BaseTrainer(object):
                     checkpoint, os.path.join(self.checkpoint_path, "ckpt.best.pth")
                 )
 
-
     def resume(self):
         model_fname = os.path.join(self.checkpoint_path, "ckpt.pth")
         if os.path.exists(model_fname):
@@ -148,7 +147,7 @@ class BaseTrainer(object):
                         log_num_saved_params,
                     )
 
-                # Randomly selecting neurons to update for first epoch 
+                # Randomly selecting neurons to update for first epoch
                 elif "random" in config.NEq_config.initialization:
                     hooks_num_params_list = []
                     for k in self.hooks:
@@ -164,7 +163,7 @@ class BaseTrainer(object):
                         hooks_num_params_list,
                         log_num_saved_params,
                     )
-                
+
                 # Updating all the neurons for first epoch
                 elif "full" in config.NEq_config.initialization:
                     compute_full_update(

@@ -22,30 +22,30 @@ class ClassificationTrainer(BaseTrainer):
         with torch.no_grad():
             # This split evaluates the performance of the model on the testing set
             if split == "test":
-                    with tqdm(
-                        total=len(self.data_loader["test"]),
-                        desc="Test",
-                        disable=dist.rank() > 0 or config.ray_tune,
-                    ) as t:
-                        for images, labels in self.data_loader["test"]:
-                            images, labels = images.cuda(), labels.cuda()
-                            # compute output
-                            output = self.model(images)
-                            loss = val_criterion(output, labels)
-                            val_loss.update(loss, images.shape[0])
-                            acc1 = accuracy(output, labels, topk=(1,))[0]
-                            val_top1.update(acc1.item(), images.shape[0])
+                with tqdm(
+                    total=len(self.data_loader["test"]),
+                    desc="Test",
+                    disable=dist.rank() > 0 or config.ray_tune,
+                ) as t:
+                    for images, labels in self.data_loader["test"]:
+                        images, labels = images.cuda(), labels.cuda()
+                        # compute output
+                        output = self.model(images)
+                        loss = val_criterion(output, labels)
+                        val_loss.update(loss, images.shape[0])
+                        acc1 = accuracy(output, labels, topk=(1,))[0]
+                        val_top1.update(acc1.item(), images.shape[0])
 
-                            t.set_postfix(
-                                {
-                                    "loss": val_loss.avg.item(),
-                                    "top1": val_top1.avg.item(),
-                                    "batch_size": images.shape[0],
-                                    "img_size": images.shape[2],
-                                }
-                            )
-                            t.update()
-            
+                        t.set_postfix(
+                            {
+                                "loss": val_loss.avg.item(),
+                                "top1": val_top1.avg.item(),
+                                "batch_size": images.shape[0],
+                                "img_size": images.shape[2],
+                            }
+                        )
+                        t.update()
+
             # This split is performed to compute neuron velocities
             elif split == "val":
                 with tqdm(
@@ -121,7 +121,7 @@ class ClassificationTrainer(BaseTrainer):
 
                 # after step (NOTICE that lr changes every step instead of epoch)
                 self.lr_scheduler.step()
-            
+
         return_dict = {
             "train/top1": train_top1.avg.item(),
             "train/loss": train_loss.avg.item(),

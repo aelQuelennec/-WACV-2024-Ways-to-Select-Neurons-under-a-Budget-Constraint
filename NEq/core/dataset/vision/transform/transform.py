@@ -72,4 +72,5 @@ class ImageTransform(dict):
     @property
     def mean_std(self):
         return config.data_provider.get(
-            "mean_std", {"mean": [0.5, 0.5, 0.5], "std": [0.5, 0.5, 0.5]})
+            "mean_std", {"mean": [0.5, 0.5, 0.5], "std": [0.5, 0.5, 0.5]}
+        )

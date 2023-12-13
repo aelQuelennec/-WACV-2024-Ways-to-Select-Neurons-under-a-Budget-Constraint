@@ -29,7 +29,7 @@ def image_folder(root, transforms):
         root=os.path.join(root, "train"),
         transform=None,
         target_transform=None,
-        )
+    )
     test = ImageFolderFilterWarning(
         root=os.path.join(root, "val"),
         transform=transforms["val"],

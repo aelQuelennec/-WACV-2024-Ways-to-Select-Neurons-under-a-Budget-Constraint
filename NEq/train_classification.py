@@ -34,18 +34,23 @@ from general_utils import (
 
 
 def get_parser():
-    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
 
-    parser.add_argument("--config-file", type=str, default="transfer",
-                        help="Which config file to call for training")
-    
+    parser.add_argument(
+        "--config-file",
+        type=str,
+        default="transfer",
+        help="Which config file to call for training",
+    )
+
     parsed = parser.parse_args()
 
     return f"{parsed.config_file}.yaml"
 
 
 def build_config(config_file_path):
-
     load_transfer_config(config_file_path)
 
     # Init wandb
@@ -94,7 +99,7 @@ def main():
 
     # Loading model
     model, total_neurons = get_model()
-    
+
     if "mbv2" in config.net_config.net_name:
         classifier = model.classifier[1]
     else:
@@ -124,8 +129,15 @@ def main():
     grad_mask = {}
 
     trainer = ClassificationTrainer(
-        model, data_loader, criterion, optimizer, lr_scheduler, hooks, grad_mask, classifier
-    )        
+        model,
+        data_loader,
+        criterion,
+        optimizer,
+        lr_scheduler,
+        hooks,
+        grad_mask,
+        classifier,
+    )
 
     # Resume training in case it was stopped
     if config.resume:

@@ -36,8 +36,9 @@ class MapDataset(data_utils.Dataset):
         return len(self.dataset)
 
 
-def split_dataset(dataset: torch.utils.data.Dataset, val_len: int = 10) -> Tuple[
-    torch.utils.data.Dataset, torch.utils.data.Dataset]:
+def split_dataset(
+    dataset: torch.utils.data.Dataset, val_len: int = 10
+) -> Tuple[torch.utils.data.Dataset, torch.utils.data.Dataset]:
     """Randomly splits a `torch.utils.data.Dataset` instance in two non-overlapping separated `Datasets`.
 
     The split of the elements of the original `Dataset` is based on `val_len`, the length of the target validation dataset.
@@ -52,8 +53,11 @@ def split_dataset(dataset: torch.utils.data.Dataset, val_len: int = 10) -> Tuple
     """
     dataset_length = len(dataset)
     train_length = dataset_length - val_len
-    train_dataset, valid_dataset = data_utils.random_split(dataset, [train_length, val_len],
-                                                generator=torch.Generator().manual_seed(config.manual_seed))
+    train_dataset, valid_dataset = data_utils.random_split(
+        dataset,
+        [train_length, val_len],
+        generator=torch.Generator().manual_seed(config.manual_seed),
+    )
 
     return train_dataset, valid_dataset
 
@@ -66,50 +70,64 @@ def build_dataset():
         )
 
     elif config.data_provider.dataset == "cifar10":
-        train_dataset = torchvision.datasets.CIFAR10(
-            config.data_provider.root,
-            train=True,
-            transform=None,
-            download=True,
-        ),
-        test = torchvision.datasets.CIFAR10(
-            config.data_provider.root,
-            train=False,
-            transform=ImageTransform()["val"],
-            download=True,
-        ),
+        train_dataset = (
+            torchvision.datasets.CIFAR10(
+                config.data_provider.root,
+                train=True,
+                transform=None,
+                download=True,
+            ),
+        )
+        test = (
+            torchvision.datasets.CIFAR10(
+                config.data_provider.root,
+                train=False,
+                transform=ImageTransform()["val"],
+                download=True,
+            ),
+        )
 
     elif config.data_provider.dataset == "cifar100":
-        train_dataset = torchvision.datasets.CIFAR100(
-            config.data_provider.root,
-            train=True,
-            transform=None,
-            download=True,
-        ),
-        test = torchvision.datasets.CIFAR100(
-            config.data_provider.root,
-            train=False,
-            transform=ImageTransform()["val"],
-            download=True,
-        ),
+        train_dataset = (
+            torchvision.datasets.CIFAR100(
+                config.data_provider.root,
+                train=True,
+                transform=None,
+                download=True,
+            ),
+        )
+        test = (
+            torchvision.datasets.CIFAR100(
+                config.data_provider.root,
+                train=False,
+                transform=ImageTransform()["val"],
+                download=True,
+            ),
+        )
 
     elif config.data_provider.dataset == "vww":
-        train_dataset = pyvww.pytorch.VisualWakeWordsClassification(
-            root="/data/aquelennec/mscoco-dataset/all2014",
-            annFile="/data/aquelennec/vww-dataset/annotations/instances_train.json",
-            transform=None,
-        ),
-        test =  pyvww.pytorch.VisualWakeWordsClassification(
-            root="/data/aquelennec/mscoco-dataset/all2014",
-            annFile="/data/aquelennec/vww-dataset/annotations/instances_val.json",
-            transform=ImageTransform()["val"],
-        ),
+        train_dataset = (
+            pyvww.pytorch.VisualWakeWordsClassification(
+                root="/data/aquelennec/mscoco-dataset/all2014",
+                annFile="/data/aquelennec/vww-dataset/annotations/instances_train.json",
+                transform=None,
+            ),
+        )
+        test = (
+            pyvww.pytorch.VisualWakeWordsClassification(
+                root="/data/aquelennec/mscoco-dataset/all2014",
+                annFile="/data/aquelennec/vww-dataset/annotations/instances_val.json",
+                transform=ImageTransform()["val"],
+            ),
+        )
 
     else:
         raise NotImplementedError(config.data_provider.dataset)
-    
+
     # These operations allows for the creation of a small validation dataset from which to compute velocities
     train, validation = split_dataset(train_dataset)
-    train, validation = MapDataset(train, ImageTransform()["train"]), MapDataset(validation, ImageTransform()["val"])
+    train, validation = MapDataset(train, ImageTransform()["train"]), MapDataset(
+        validation, ImageTransform()["val"]
+    )
 
     return {"train": train, "val": validation, "test": test}

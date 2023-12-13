@@ -34,6 +34,7 @@ def _compute_velocity_budget_mask(
         else:
             grad_mask[k] = mask
 
+
 # Computes a random mask such that we update less parameters than the SU equivalent
 def compute_random_budget_mask(
     hooks, grad_mask, hooks_num_params_list, log_num_saved_params
@@ -87,7 +88,7 @@ def compute_full_update(hooks, grad_mask, hooks_num_params_list, log_num_saved_p
         grad_mask[k] = torch.LongTensor([])
         num_saved_neurons += len(hooks_num_params_list[i])
         num_saved_params += torch.sum(hooks_num_params_list[i])
-        i+=1
+        i += 1
 
     log_num_saved_params["Number of saved neurons"] = num_saved_neurons
     log_num_saved_params["Number of saved parameters"] = num_saved_params
@@ -109,4 +110,6 @@ def select_mask_method(
             hooks, grad_mask, hooks_num_params_list, log_num_saved_params
         )
     elif config.NEq_config.neuron_selection == "full":
-        compute_full_update(hooks, grad_mask, hooks_num_params_list, log_num_saved_params)
+        compute_full_update(
+            hooks, grad_mask, hooks_num_params_list, log_num_saved_params
+        )
