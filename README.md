@@ -28,7 +28,7 @@ The corresponding root paths must be modified in the "NEq_configs.yaml" and "NEq
 
 ## 3. Launch the code as sweep with wandb
 
-* It is strongly advised to run the code through the wandb sweep tool in order as it allows for parallel and autonomous launching of many runs alongside easy monitoring of results.
+* It is strongly advised to run the code through the wandb sweep tool as it allows for parallel and autonomous launching of many runs alongside easy monitoring of results.
 * An example of sweep configuration is provided in 'wandb_sweep_example.yaml'.
 
 ## Citation
