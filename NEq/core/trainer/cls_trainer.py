@@ -16,8 +16,8 @@ class ClassificationTrainer(BaseTrainer):
         self.model.eval()
         val_criterion = self.criterion  # torch.nn.CrossEntropyLoss()
 
-        val_loss = DistributedMetric("val_loss")
-        val_top1 = DistributedMetric("val_top1")
+        test_loss = DistributedMetric("test_loss")
+        test_top1 = DistributedMetric("test_top1")
 
         with torch.no_grad():
             # This split evaluates the performance of the model on the testing set
@@ -32,14 +32,14 @@ class ClassificationTrainer(BaseTrainer):
                         # compute output
                         output = self.model(images)
                         loss = val_criterion(output, labels)
-                        val_loss.update(loss, images.shape[0])
+                        test_loss.update(loss, images.shape[0])
                         acc1 = accuracy(output, labels, topk=(1,))[0]
-                        val_top1.update(acc1.item(), images.shape[0])
+                        test_top1.update(acc1.item(), images.shape[0])
 
                         t.set_postfix(
                             {
-                                "loss": val_loss.avg.item(),
-                                "top1": val_top1.avg.item(),
+                                "loss": test_loss.avg.item(),
+                                "top1": test_top1.avg.item(),
                                 "batch_size": images.shape[0],
                                 "img_size": images.shape[2],
                             }
@@ -59,14 +59,14 @@ class ClassificationTrainer(BaseTrainer):
                         output = self.model(images)
                         loss = val_criterion(output, labels)
 
-                        val_loss.update(loss, images.shape[0])
+                        test_loss.update(loss, images.shape[0])
                         acc1 = accuracy(output, labels, topk=(1,))[0]
-                        val_top1.update(acc1.item(), images.shape[0])
+                        test_top1.update(acc1.item(), images.shape[0])
 
                         t.set_postfix(
                             {
-                                "loss": val_loss.avg.item(),
-                                "top1": val_top1.avg.item(),
+                                "loss": test_loss.avg.item(),
+                                "top1": test_top1.avg.item(),
                                 "batch_size": images.shape[0],
                                 "img_size": images.shape[2],
                             }
@@ -74,8 +74,8 @@ class ClassificationTrainer(BaseTrainer):
                         t.update()
 
         return {
-            "val/top1": val_top1.avg.item(),
-            "val/loss": val_loss.avg.item(),
+            "test/top1": test_top1.avg.item(),
+            "test/loss": test_loss.avg.item(),
         }
 
     def train_one_epoch(self, epoch):

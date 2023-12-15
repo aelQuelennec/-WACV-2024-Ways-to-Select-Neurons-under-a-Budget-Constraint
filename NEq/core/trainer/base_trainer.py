@@ -45,7 +45,7 @@ class BaseTrainer(object):
         self.data_loader = data_loader
         self.criterion = criterion
 
-        self.best_val = 0.0
+        self.best_test = 0.0
         self.start_epoch = 0
 
         # optimization-related
@@ -67,7 +67,7 @@ class BaseTrainer(object):
                 if isinstance(self.model, nn.parallel.DistributedDataParallel)
                 else self.model.state_dict(),
                 "epoch": epoch,
-                "best_val": self.best_val,
+                "best_test": self.best_test,
                 "optimizer": self.optimizer.state_dict(),
                 "lr_scheduler": self.lr_scheduler.state_dict(),
             }
@@ -95,11 +95,11 @@ class BaseTrainer(object):
                 logger.info("loaded epoch: %d" % checkpoint["epoch"])
             else:
                 logger.info("!!! epoch not found in checkpoint")
-            if "best_val" in checkpoint:
-                self.best_val = checkpoint["best_val"]
-                logger.info("loaded best_val: %f" % checkpoint["best_val"])
+            if "best_test" in checkpoint:
+                self.best_test = checkpoint["best_test"]
+                logger.info("loaded best_test: %f" % checkpoint["best_test"])
             else:
-                logger.info("!!! best_val not found in checkpoint")
+                logger.info("!!! best_test not found in checkpoint")
             if "optimizer" in checkpoint:
                 self.optimizer.load_state_dict(checkpoint["optimizer"])
                 logger.info("loaded optimizer")
@@ -120,7 +120,7 @@ class BaseTrainer(object):
         raise NotImplementedError
 
     def run_training(self, total_neurons, total_conv_flops):
-        val_info_dict = None
+        test_info_dict = None
 
         # Computing the budget in terms of number of parameters
         config.NEq_config.glob_num_params = compute_update_budget(
@@ -191,17 +191,17 @@ class BaseTrainer(object):
                 == config.run_config.n_epochs + config.run_config.warmup_epochs - 1
             ):
                 activate_hooks(self.hooks, False)
-                val_info_dict = self.validate("test")
-                is_best = val_info_dict["val/top1"] > self.best_val
-                self.best_val = max(val_info_dict["val/top1"], self.best_val)
+                test_info_dict = self.validate("test")
+                is_best = test_info_dict["test/top1"] > self.best_test
+                self.best_test = max(test_info_dict["test/top1"], self.best_test)
                 if is_best:
                     logger.info(
                         " * New best acc (epoch {}): {:.2f}".format(
-                            epoch, self.best_val
+                            epoch, self.best_test
                         )
                     )
-                val_info_dict["val/best"] = self.best_val
-                logger.info(f"epoch {epoch}: {val_info_dict}")
+                test_info_dict["test/best"] = self.best_test
+                logger.info(f"epoch {epoch}: {test_info_dict}")
 
                 # save model
                 self.save(
@@ -216,7 +216,7 @@ class BaseTrainer(object):
                         "Perc of frozen conv neurons": frozen_neurons,
                         "FLOPS stats": saved_flops,
                         "train": train_info_dict,
-                        "valid": val_info_dict,
+                        "test": test_info_dict,
                         "epochs": epoch,
                         "lr": self.optimizer.param_groups[0]["lr"],
                         "Saved parameters": log_num_saved_params,
@@ -233,4 +233,4 @@ class BaseTrainer(object):
                 log_num_saved_params, self.hooks, self.grad_mask, epoch
             )
 
-        return val_info_dict
+        return test_info_dict
