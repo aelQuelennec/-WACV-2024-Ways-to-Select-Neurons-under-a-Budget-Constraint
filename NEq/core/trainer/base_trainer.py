@@ -166,8 +166,16 @@ class BaseTrainer(object):
 
                 # Updating all the neurons for first epoch
                 elif "full" in config.NEq_config.initialization:
+                    hooks_num_params_list = []
+                    for k in self.hooks:
+                        hooks_num_params_list.append(
+                            torch.Tensor(
+                                [self.hooks[k].single_neuron_num_params]
+                                * self.hooks[k].module.out_channels
+                            )
+                        )
                     compute_full_update(
-                        self.hooks, self.grad_mask, log_num_saved_params
+                        self.hooks, self.grad_mask, hooks_num_params_list, log_num_saved_params
                     )
 
             # Log the amount of frozen neurons
