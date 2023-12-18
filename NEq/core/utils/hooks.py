@@ -4,7 +4,6 @@ from torch import nn
 
 from core.utils.config import config
 from core.utils.neuron_selections_methods import select_mask_method
-from compute_stats import plots
 
 
 def record_in_out_shape(m_, x, y):
