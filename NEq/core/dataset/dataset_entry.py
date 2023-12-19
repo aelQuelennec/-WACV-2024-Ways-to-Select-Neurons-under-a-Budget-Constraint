@@ -51,8 +51,8 @@ def split_dataset(
         tuple: a tuple containing the two new datasets.
 
     """
-    dataset_length = len(dataset)
-    train_length = dataset_length - val_len
+    dataset_length = int(len(dataset))
+    train_length = int(dataset_length - val_len)
     train_dataset, valid_dataset = data_utils.random_split(
         dataset,
         [train_length, val_len],
