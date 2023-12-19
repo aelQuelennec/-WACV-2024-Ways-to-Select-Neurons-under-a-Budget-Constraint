@@ -25,7 +25,7 @@ class ClassificationTrainer(BaseTrainer):
                 with tqdm(
                     total=len(self.data_loader["test"]),
                     desc="Test",
-                    disable=dist.rank() > 0 or config.ray_tune,
+                    disable=dist.rank() > 0,
                 ) as t:
                     for images, labels in self.data_loader["test"]:
                         images, labels = images.cuda(), labels.cuda()
@@ -51,7 +51,7 @@ class ClassificationTrainer(BaseTrainer):
                 with tqdm(
                     total=len(self.data_loader["val"]),
                     desc="Validate",
-                    disable=dist.rank() > 0 or config.ray_tune,
+                    disable=dist.rank() > 0,
                 ) as t:
                     for images, labels in self.data_loader["val"]:
                         images, labels = images.cuda(), labels.cuda()
@@ -88,7 +88,7 @@ class ClassificationTrainer(BaseTrainer):
         with tqdm(
             total=len(self.data_loader["train"]),
             desc="Train Epoch #{}".format(epoch + 1),
-            disable=dist.rank() > 0 or config.ray_tune,
+            disable=dist.rank() > 0,
         ) as t:
             for _, (images, labels) in enumerate(self.data_loader["train"]):
                 images, labels = images.cuda(), labels.cuda()
