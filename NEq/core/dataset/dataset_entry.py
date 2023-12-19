@@ -70,55 +70,43 @@ def build_dataset():
         )
 
     elif config.data_provider.dataset == "cifar10":
-        train_dataset = (
-            torchvision.datasets.CIFAR10(
-                config.data_provider.root,
-                train=True,
-                transform=None,
-                download=True,
-            ),
-        )
-        test = (
-            torchvision.datasets.CIFAR10(
+        train_dataset = torchvision.datasets.CIFAR10(
+            config.data_provider.root,
+            train=True,
+            transform=None,
+            download=True,
+            )
+        test = torchvision.datasets.CIFAR10(
                 config.data_provider.root,
                 train=False,
                 transform=ImageTransform()["val"],
                 download=True,
-            ),
-        )
+            )
 
     elif config.data_provider.dataset == "cifar100":
-        train_dataset = (
-            torchvision.datasets.CIFAR100(
-                config.data_provider.root,
-                train=True,
-                transform=None,
-                download=True,
-            ),
+        train_dataset = torchvision.datasets.CIFAR100(
+            config.data_provider.root,
+            train=True,
+            transform=None,
+            download=True,
         )
-        test = (
-            torchvision.datasets.CIFAR100(
-                config.data_provider.root,
-                train=False,
-                transform=ImageTransform()["val"],
-                download=True,
-            ),
+        test = torchvision.datasets.CIFAR100(
+            config.data_provider.root,
+            train=False,
+            transform=ImageTransform()["val"],
+            download=True,
         )
 
     elif config.data_provider.dataset == "vww":
-        train_dataset = (
-            pyvww.pytorch.VisualWakeWordsClassification(
-                root="/data/aquelennec/mscoco-dataset/all2014",
-                annFile="/data/aquelennec/vww-dataset/annotations/instances_train.json",
-                transform=None,
-            ),
+        train_dataset = pyvww.pytorch.VisualWakeWordsClassification(
+            root="/data/aquelennec/mscoco-dataset/all2014",
+            annFile="/data/aquelennec/vww-dataset/annotations/instances_train.json",
+            transform=None,
         )
-        test = (
-            pyvww.pytorch.VisualWakeWordsClassification(
-                root="/data/aquelennec/mscoco-dataset/all2014",
-                annFile="/data/aquelennec/vww-dataset/annotations/instances_val.json",
-                transform=ImageTransform()["val"],
-            ),
+        test = pyvww.pytorch.VisualWakeWordsClassification(
+            root="/data/aquelennec/mscoco-dataset/all2014",
+            annFile="/data/aquelennec/vww-dataset/annotations/instances_val.json",
+            transform=ImageTransform()["val"],
         )
 
     else:
