@@ -29,10 +29,7 @@ def _compute_velocity_budget_mask(
 
     for k, velocity in zip(hooks, velocity_list):
         mask = torch.where(torch.abs(velocity) <= best_neurons_threshold)[0]
-        if config.NEq_config.pinning and k in grad_mask:
-            grad_mask[k] = torch.cat([grad_mask[k].long(), mask.long()]).unique()
-        else:
-            grad_mask[k] = mask
+        grad_mask[k] = mask
 
 
 # Computes a random mask such that we update less parameters than the SU equivalent
@@ -67,10 +64,7 @@ def compute_random_budget_mask(
 
     for k, slice_indices in zip(hooks, slices_list):
         mask = torch.where(sorted_neurons[slice_indices[0] : slice_indices[1]] < 1)[0]
-        if config.NEq_config.pinning and k in grad_mask:
-            grad_mask[k] = torch.cat([grad_mask[k].long(), mask.long()]).unique()
-        else:
-            grad_mask[k] = mask
+        grad_mask[k] = mask
 
     log_num_saved_params["Number of saved parameters"] = current_sum
     log_num_saved_params["Parameters delta with Budget"] = (
