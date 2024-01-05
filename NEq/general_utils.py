@@ -8,7 +8,7 @@ import torch.utils.data
 from torch import nn
 
 from classification.models import get_model
-from core.utils.config import config, load_config_from_file
+from core.utils.config import config, load_transfer_config
 
 
 def set_seed(seed):
@@ -161,6 +161,6 @@ def log_masks(model, hooks, grad_mask, total_neurons, total_conv_flops):
 
 # Call this function to access to a network's number of convolutional parameters
 if __name__ == "__main__":
-    load_config_from_file("configs/transfer.yaml")
+    load_transfer_config("transfer.yaml")
     model, _ = get_model()
     count_net_num_conv_params(model)

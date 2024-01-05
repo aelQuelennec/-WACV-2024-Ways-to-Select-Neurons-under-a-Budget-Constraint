@@ -4,8 +4,6 @@ from typing import Callable, Dict, Optional
 from torchvision import datasets
 import warnings
 
-__all__ = ["ImageFolder"]
-
 
 class ImageFolderFilterWarning(datasets.ImageFolder):
     def __init__(

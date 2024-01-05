@@ -25,8 +25,6 @@ def load_transfer_config(file_path: str) -> None:
     if not os.path.exists(file_path):
         raise FileNotFoundError(file_path)
 
-    # assert file_path.startswith('configs/') and file_path.endswith('.yaml'), \
-    #     f'Invalid config path {file_path}'
     assert "configs/" in file_path
     prefix = file_path.split("configs/")[0]
     file_path = file_path[len(prefix) :]
