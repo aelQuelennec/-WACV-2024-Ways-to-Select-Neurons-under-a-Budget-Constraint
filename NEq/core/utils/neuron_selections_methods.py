@@ -56,7 +56,7 @@ def compute_random_budget_mask(
         selected_neurons[sum_index] = 1
         current_sum = new_sum
         sum_index = new_index
-        new_sum += hooks_num_params_with_indices[0][sum_index].item()
+        new_sum += shuffled_hooks[0][sum_index].item()
         new_index += 1
 
     sort_indices = shuffled_hooks[1].sort().indices
