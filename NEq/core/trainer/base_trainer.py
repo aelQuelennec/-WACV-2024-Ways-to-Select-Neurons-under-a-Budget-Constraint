@@ -236,7 +236,7 @@ class BaseTrainer(object):
                 self.grad_mask = {}
                 log_num_saved_params = {}
             else:
-                if epoch == 0:
+                if epoch == 0 and not config.NEq_config.initialization == "SU":
                     self.grad_mask = {}
                     log_num_saved_params = {}
                     config.backward_config = parsed_backward_config(
