@@ -235,20 +235,19 @@ class BaseTrainer(object):
             if not config.NEq_config.neuron_selection == "SU":
                 self.grad_mask = {}
                 log_num_saved_params = {}
-            else:
-                if epoch == 0 and not config.NEq_config.initialization == "SU":
-                    self.grad_mask = {}
-                    log_num_saved_params = {}
-                    config.backward_config = parsed_backward_config(
-                        config.backward_config, self.model
-                    )
-                    manually_initialize_grad_mask(
-                        self.hooks,
-                        self.grad_mask,
-                        self.model,
-                        config.backward_config,
-                        log_num_saved_params,
-                    )
+            elif epoch == 0 and not config.NEq_config.initialization == "SU":
+                self.grad_mask = {}
+                log_num_saved_params = {}
+                config.backward_config = parsed_backward_config(
+                    config.backward_config, self.model
+                )
+                manually_initialize_grad_mask(
+                    self.hooks,
+                    self.grad_mask,
+                    self.model,
+                    config.backward_config,
+                    log_num_saved_params,
+                )
 
             # Computing the gradients mask on the whole network depending on the neuron selection method
             get_global_gradient_mask(
