@@ -1,0 +1,59 @@
+command:
+  - python3
+  - ${program}
+method: grid
+metric:
+  goal: maximize
+  name: valid.val/best
+parameters:
+  # data_provider in transfer.yaml
+  image_size:
+    distribution: categorical
+    values:
+      - 224
+  base_batch_size:
+    distribution: categorical
+    values:
+      - 32
+  # run_config in transfer.yaml
+  n_epochs:
+    distribution: categorical
+    values:
+      - 120
+  base_lr:
+    values:
+      - 0.0125
+  lr_schedule_name:
+    values:
+      - cosine
+  optimizer_name:
+    values:
+      - sgd
+  dataset:
+    values:
+      - c10
+  initialization:
+    values:
+      - random
+  manual_seed:
+    values:
+      - 0
+      - 42
+      - 100
+  net_name:
+    values:
+      - pre_trained_resnet18
+  neuron_selection:
+    values:
+      - velocity
+      - random
+  scheme:
+    values:
+      - scheme_fixed_budget # Change the number of updatable neuron in NEq_configs.yaml or add inside sweep, Cannot apply for SU update
+  budget:
+    values:
+      - 55834
+      #- 192311
+      #- 464639
+      #- 675540
+program: ./NEq/train_classification.py

@@ -46,6 +46,8 @@ class BaseTrainer(object):
         self.criterion = criterion
 
         self.best_test = 0.0
+        self.test_top1_at_best_val = 0.0 # Log top-1 test accuracy of the model when its top-1 validation accuracy reachs the highest value
+        self.best_val = 0.0
         self.start_epoch = 0
 
         # optimization-related
@@ -67,7 +69,9 @@ class BaseTrainer(object):
                 if isinstance(self.model, nn.parallel.DistributedDataParallel)
                 else self.model.state_dict(),
                 "epoch": epoch,
+                "best_val": self.best_val,
                 "best_test": self.best_test,
+                "test_top1_at_best_val": self.test_top1_at_best_val,
                 "optimizer": self.optimizer.state_dict(),
                 "lr_scheduler": self.lr_scheduler.state_dict(),
             }
@@ -100,6 +104,16 @@ class BaseTrainer(object):
                 logger.info("loaded best_test: %f" % checkpoint["best_test"])
             else:
                 logger.info("!!! best_test not found in checkpoint")
+            if "best_val" in checkpoint:
+                self.best_val = checkpoint["best_val"]
+                logger.info("loaded best_val: %f" % checkpoint["best_val"])
+            else:
+                logger.info("!!! best_val not found in checkpoint")
+            if "test_top1_at_best_val" in checkpoint:
+                self.test_top1_at_best_val = checkpoint["test_top1_at_best_val"]
+                logger.info("loaded test_top1_at_best_val: %f" % checkpoint["test_top1_at_best_val"])
+            else:
+                logger.info("!!! test_top1_at_best_val not found in checkpoint")
             if "optimizer" in checkpoint:
                 self.optimizer.load_state_dict(checkpoint["optimizer"])
                 logger.info("loaded optimizer")
@@ -119,13 +133,17 @@ class BaseTrainer(object):
     def train_one_epoch(self, epoch):
         raise NotImplementedError
 
-    def run_training(self, total_neurons, total_conv_flops):
+    def run_training(self, total_neurons, total_conv_flops, config_scheme):
         test_info_dict = None
+        val_info_dict = None
 
         # Computing the budget in terms of number of parameters
-        config.NEq_config.glob_num_params = compute_update_budget(
-            config.NEq_config.total_num_params, config.NEq_config.ratio
-        )
+        if "fixed_budget" in config_scheme or "mcunet" in config_scheme or "proxyless" in config_scheme: # As defined in NEq_configs.yaml, all MCUNet schemes's budget are defined with absolute number instead of ratio
+            config.NEq_config.glob_num_params = config.NEq_config.budget
+        else:
+            config.NEq_config.glob_num_params = compute_update_budget(
+                config.NEq_config.total_num_params, config.NEq_config.ratio
+            )
 
         for epoch in range(
             self.start_epoch,
@@ -179,57 +197,99 @@ class BaseTrainer(object):
                     )
 
             # Log the amount of frozen neurons
-            frozen_neurons, saved_flops = log_masks(
-                self.model, self.hooks, self.grad_mask, total_neurons, total_conv_flops
-            )
+            use_baseline = (config_scheme == "scheme_baseline")
+            if not use_baseline:
+                frozen_neurons, saved_flops = log_masks(
+                    self.model, self.hooks, self.grad_mask, total_neurons, total_conv_flops
+                )
 
             # Train step
             activate_hooks(self.hooks, False)
             train_info_dict = self.train_one_epoch(epoch)
             logger.info(f"epoch {epoch}: f{train_info_dict}")
-
+            
             # Validation step to compute neurons velocities
-            activate_hooks(self.hooks, True)
-            _ = self.validate("val")
+            if not use_baseline:
+                activate_hooks(self.hooks, not use_baseline)
+                _ = self.validate("val_velocity")
 
-            # Testing step to observe accuracy evolution
+            # Validate after each epoch
+            activate_hooks(self.hooks, False)
+            val_info_dict = self.validate("val")
+            is_best_val = val_info_dict["val/top1"] > self.best_val
+            self.best_val = max(val_info_dict["val/top1"], self.best_val)
+            if is_best_val:
+                logger.info(
+                    " * New best val acc (epoch {}): {:.2f}".format(
+                        epoch, self.best_val
+                    )
+                )
+            val_info_dict["val/best"] = self.best_val
+            logger.info(f"epoch {epoch}: {val_info_dict}")
+
+            # Testing step to observe accuracy evolution (after each test_per_epochs or at the last epoch)
             if (
-                (epoch + 1) % config.run_config.eval_per_epochs == 0
-                or epoch
-                == config.run_config.n_epochs + config.run_config.warmup_epochs - 1
+                (epoch + 1) % config.run_config.test_per_epochs == 0
+                or 
+                epoch == config.run_config.n_epochs + config.run_config.warmup_epochs - 1
             ):
                 activate_hooks(self.hooks, False)
                 test_info_dict = self.validate("test")
-                is_best = test_info_dict["test/top1"] > self.best_test
+                is_best_test = test_info_dict["test/top1"] > self.best_test
                 self.best_test = max(test_info_dict["test/top1"], self.best_test)
-                if is_best:
+                # Testing step to observe accuracy when valid is best
+                if is_best_val:
+                    self.test_top1_at_best_val = test_info_dict["test/top1"]
                     logger.info(
-                        " * New best acc (epoch {}): {:.2f}".format(
+                        " * Valid/best at epoch {}, with Test/top1 is {:.2f}".format(
+                            epoch, test_info_dict["test/top1"]
+                        )
+                    )
+                else:
+                    self.test_top1_at_best_val = self.test_top1_at_best_val
+                test_info_dict["test/top1_at_valid_best"] = self.test_top1_at_best_val
+                if is_best_test:
+                    logger.info(
+                        " * New best test acc (epoch {}): {:.2f}".format(
                             epoch, self.best_test
                         )
                     )
                 test_info_dict["test/best"] = self.best_test
                 logger.info(f"epoch {epoch}: {test_info_dict}")
-
-                # save model
-                self.save(
-                    epoch=epoch,
-                    is_best=is_best,
-                )
+                #############################################
+                
+            # save model when validation acc reach its highest value
+            self.save(
+                epoch=epoch,
+                is_best=is_best_val,
+            )
 
             # Logs
             if dist.rank() <= 0:
-                wandb.log(
-                    {
-                        "Perc of frozen conv neurons": frozen_neurons,
-                        "FLOPS stats": saved_flops,
-                        "train": train_info_dict,
-                        "test": test_info_dict,
-                        "epochs": epoch,
-                        "lr": self.optimizer.param_groups[0]["lr"],
-                        "Saved parameters": log_num_saved_params,
-                    }
-                )
+                if use_baseline:
+                    wandb.log(
+                        {
+                            "train": train_info_dict,
+                            "valid": val_info_dict,
+                            "test": test_info_dict,
+                            "epochs": epoch,
+                            "lr": self.optimizer.param_groups[0]["lr"],
+                            "Saved parameters": log_num_saved_params,
+                        }
+                    )
+                else:
+                    wandb.log(
+                        {
+                            "Perc of frozen conv neurons": frozen_neurons,
+                            "FLOPS stats": saved_flops,
+                            "train": train_info_dict,
+                            "valid": val_info_dict,
+                            "test": test_info_dict,
+                            "epochs": epoch,
+                            "lr": self.optimizer.param_groups[0]["lr"],
+                            "Saved parameters": log_num_saved_params,
+                        }
+                    )
 
             # Not reseting grad mask and log in case of SU selection
             if not config.NEq_config.neuron_selection == "SU":
@@ -250,8 +310,9 @@ class BaseTrainer(object):
                 )
 
             # Computing the gradients mask on the whole network depending on the neuron selection method
-            get_global_gradient_mask(
-                log_num_saved_params, self.hooks, self.grad_mask, epoch
-            )
+            if(not use_baseline):
+                get_global_gradient_mask(
+                    log_num_saved_params, self.hooks, self.grad_mask, epoch
+                )
 
-        return test_info_dict
+        return val_info_dict

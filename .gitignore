@@ -1,3 +1,4 @@
+*.xlsx
 # Personal additions
 data/
 runs/

@@ -10,6 +10,8 @@ from torch import nn
 from classification.models import get_model
 from core.utils.config import config, load_transfer_config
 
+from core.utils.sparse_update_tools import get_all_conv_ops
+
 
 def set_seed(seed):
     random.seed(seed)
@@ -52,7 +54,35 @@ def count_net_num_conv_params(model):
         this_num_weight += conv.weight.numel()
         num_params.append(this_num_weight)
     total_num_params = sum(num_params)
-    print(total_num_params)
+    print("Total num param: ", total_num_params)
+
+def count_updateable_param(model, scheme): # Use to calculate the total updatable parameter of SU scheme
+
+    ## Same as count_net_num_conv_params
+    conv_ops = [m for m in model.modules() if isinstance(m, torch.nn.Conv2d)]
+    num_params = []
+    for conv in conv_ops:
+        this_num_weight = 0
+        if conv.bias is not None:
+            this_num_weight += conv.bias.numel()
+        this_num_weight += conv.weight.numel()
+        num_params.append(this_num_weight)
+    ## 
+    import yaml
+
+    with open("./NEq_configs.yaml", 'r') as file:
+        NEq_configs_yaml = yaml.safe_load(file)
+    # backward_config  = NEq_configs_yaml["net_configs"][sweep_config["scheme"][0]]["SU_scheme"]
+    backward_config  = NEq_configs_yaml["net_configs"][scheme]["SU_scheme"]
+    
+
+    weight_update_ratio = backward_config["weight_update_ratio"].split("-")
+    manual_weight_idx = backward_config["manual_weight_idx"].split("-")
+    budget = 0
+    for i in range(len(manual_weight_idx)):
+        budget += float(weight_update_ratio[i])*num_params[int(manual_weight_idx[i])]
+    
+    print("Total updatable num param: ", budget)
 
 
 def compute_update_budget(num_conv_params, ratio):
@@ -99,11 +129,18 @@ def find_module_by_name(model, name):
 # Set module gradients to 0 given neurons to freeze
 @torch.no_grad()
 def zero_gradients(model, name, mask):
-    module = find_module_by_name(model, name)
+    module = find_module_by_name(model, name) # only find convolution layer because name is the name of convolution layer, which is taken from grad_mask (also is created for convolution layers)
     module.weight.grad[mask] = 0.0
-    if getattr(module, "bias", None) is not None:
-        module.bias.grad[mask] = 0.0
+    # if getattr(module, "bias", None) is not None:
+    #     module.bias.grad[mask] = 0.0
     # TODO : implement bias freezing depending on depth for SU update : here it's not important as mbv2 has no bias
+    all_conv_layers = get_all_conv_ops(model) # Get all convolution layers in the model
+    for index in range(len(all_conv_layers) - config.backward_config["n_bias_update"]): # Travel through all layers having bias updated
+        if getattr(all_conv_layers[index], "bias", None) is not None:
+            all_conv_layers[index].bias.grad[:] = 0.0 # Freeze all biases in this layer (or can use 3 lines of code below instead)
+            # for name, param in all_conv_layers[index].named_parameters():
+            #     if name == "bias":
+            #         param.grad.zero_()
 
 
 @torch.no_grad()
@@ -161,6 +198,13 @@ def log_masks(model, hooks, grad_mask, total_neurons, total_conv_flops):
 
 # Call this function to access to a network's number of convolutional parameters
 if __name__ == "__main__":
-    load_transfer_config("transfer.yaml")
-    model, _ = get_model()
-    count_net_num_conv_params(model)
+    # load_transfer_config("transfer.yaml")#load_config_from_file("configs/transfer.yaml")
+    net_name = "proxyless-w0.3" # Fill in the name of the model needed to be measured
+    schemes = ["proxyless-w0.3_scheme_1", "proxyless-w0.3_scheme_2", "proxyless-w0.3_scheme_3", "proxyless-w0.3_scheme_4", "proxyless-w0.3_scheme_5"]
+    if "mcunet" in net_name or net_name == "proxyless-w0.3":
+        model, _, _, _ = get_model(net_name)
+    else:
+        model, _ = get_model(net_name)
+    for scheme in schemes:
+        count_updateable_param(model, scheme)
+    # count_net_num_conv_params(model)

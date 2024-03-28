@@ -78,6 +78,21 @@ def main():
     logger.info(" ".join([sys.executable] + sys.argv))
     logger.info(f'Experiment started: "{config.run_dir}".')
 
+    # Loading model
+    print(f"Initialize model {config.net_config.net_name}")
+    if "mcunet" in config.net_config.net_name or config.net_config.net_name == "proxyless-w0.3":
+        model, config.data_provider.image_size, description, total_neurons = get_model(config.net_config.net_name)
+
+        print("Model: ", config.net_config.net_name)
+        print("image_size: ", config.data_provider.image_size)
+        print("Description: ", description)
+        print("Total neuron: ", total_neurons)
+    else:
+        model, total_neurons = get_model(config.net_config.net_name)
+
+        print("Model: ", config.net_config.net_name)
+        print("Total neuron: ", total_neurons)
+
     dataset = build_dataset()
     data_loader = dict()
     for split in dataset:
@@ -96,12 +111,11 @@ def main():
             pin_memory=True,
             drop_last=(split == "train"),
         )
-
-    # Loading model
-    model, total_neurons = get_model()
-
+    
     if "mbv2" in config.net_config.net_name:
         classifier = model.classifier[1]
+    elif "mcunet" in config.net_config.net_name or config.net_config.net_name == "proxyless-w0.3":
+        classifier = model.classifier # Based on information from NEq/classification/models/__init__/get_model/cfg
     else:
         classifier = model.fc
     # Change classifier head in case of fine-tuning
@@ -147,21 +161,23 @@ def main():
     attach_hooks(trainer.model, trainer.hooks)
 
     # First run on validation to get the PSP for epoch -1
-    activate_hooks(trainer.hooks, True)
-    val_info_dict = trainer.validate("val")
+    if wandb.config.scheme != "scheme_baseline":
+        activate_hooks(trainer.hooks, wandb.config.scheme != "scheme_baseline")  # When baseline is used, I dont need to use velocity and neuron selection method => Deactivate the hook
+        _ = trainer.validate("val_velocity")
 
     total_conv_flops = 0
-    # Save the activations into the dict + compute flops per conv layer
-    for k in trainer.hooks:
-        previous_activations[k] = trainer.hooks[k].get_samples_activation()
-        trainer.hooks[k].reset(previous_activations[k])
-        module = find_module_by_name(model, k)
-        layer_flops = compute_Conv2d_flops(module)
-        trainer.hooks[k].flops = layer_flops
-        total_conv_flops += layer_flops
+    if (wandb.config.scheme != "scheme_baseline"):#if (not use_baseline):
+        # Save the activations into the dict + compute flops per conv layer
+        for k in trainer.hooks:
+            previous_activations[k] = trainer.hooks[k].get_samples_activation()
+            trainer.hooks[k].reset(previous_activations[k])
+            module = find_module_by_name(model, k)
+            layer_flops = compute_Conv2d_flops(module)
+            trainer.hooks[k].flops = layer_flops
+            total_conv_flops += layer_flops
 
     # Training the model
-    val_info_dict = trainer.run_training(total_neurons, total_conv_flops)
+    val_info_dict = trainer.run_training(total_neurons, total_conv_flops, wandb.config.scheme)
 
     if dist.rank() <= 0:
         wandb.run.finish()

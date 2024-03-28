@@ -1,0 +1,56 @@
+command:
+  - python3
+  - ${program}
+method: grid
+metric:
+  goal: maximize
+  name: valid.val/best
+parameters:
+  # data_provider in transfer.yaml
+  base_batch_size:
+    values:
+      - 32
+  # run_config in transfer.yaml
+  n_epochs:
+    values:
+      - 80
+  base_lr:
+    values:
+      - 0.1
+  lr_schedule_name:
+    values:
+      - cosine
+  optimizer_name:
+    values:
+      - sgd
+  dataset:
+    values:
+      - cub
+  initialization:
+    values:
+      - random
+  manual_seed:
+    values:
+      - 0
+      - 42
+      - 100
+  net_name:
+    values:
+      # - mcunet-in0 # MCUNet model that runs 10fps on STM32F746 (ImageNet)
+      - mcunet-in1 # MCUNet model that runs 5fps on STM32F746 (ImageNet)
+      # - mcunet-in2 # MCUNet model that fits 256KB SRAM and 1MB Flash (ImageNet)
+      # - mcunet-in3 # MCUNet model that fits 320KB SRAM and 1MB Flash (ImageNet)
+      # - mcunet-in4 # MCUNet model that fits 512KB SRAM and 2MB Flash (ImageNet)
+  neuron_selection:
+    values:
+      - SU
+      - velocity
+      - random
+  scheme:
+    values:
+      - mcunet-in1_scheme_1
+      - mcunet-in1_scheme_2
+      - mcunet-in1_scheme_3
+      - mcunet-in1_scheme_4
+      - mcunet-in1_scheme_5
+program: ./NEq/train_classification.py

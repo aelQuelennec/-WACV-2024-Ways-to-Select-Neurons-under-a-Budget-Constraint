@@ -1,0 +1,56 @@
+command:
+  - python3
+  - ${program}
+method: grid
+metric:
+  goal: maximize
+  name: valid.val/best
+parameters:
+  # data_provider in transfer.yaml
+  image_size:
+    distribution: categorical
+    values:
+      - 224
+  base_batch_size:
+    distribution: categorical
+    values:
+      - 32
+  # run_config in transfer.yaml
+  n_epochs:
+    distribution: categorical
+    values:
+      - 120
+  base_lr:
+    values:
+      - 0.025
+  lr_schedule_name:
+    values:
+      - cosine
+  optimizer_name:
+    values:
+      - sgd
+  dataset:
+    values:
+      - c10
+  initialization:
+    values:
+      - random
+  manual_seed:
+    values:
+      - 0
+      - 42
+      - 100
+  net_name:
+    values:
+      - pre_trained_mbv2
+  neuron_selection:
+    values:
+      - SU
+      - velocity
+      - random
+  scheme:
+    values:
+      - mbv2_scheme_1
+      - mbv2_scheme_3
+      - mbv2_scheme_5
+program: ./NEq/train_classification.py

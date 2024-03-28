@@ -1,0 +1,58 @@
+command:
+  - python3
+  - ${program}
+method: grid
+metric:
+  goal: maximize
+  name: valid.val/best
+parameters:
+  # data_provider in transfer.yaml
+  base_batch_size:
+    values:
+      - 32
+  # run_config in transfer.yaml
+  n_epochs:
+    values:
+      - 1
+  base_lr:
+    values:
+      - 0.0125
+  lr_schedule_name:
+    values:
+      - cosine
+  optimizer_name:
+    values:
+      - sgd
+  dataset:
+    values:
+      - c10
+  initialization:
+    values:
+      # - full #used when baseline (scheme_baseline) is applied
+      # - random
+      - SU
+  manual_seed:
+    # distribution: categorical
+    values:
+      - 0
+      # - 42
+      # - 100
+  net_name:
+    # distribution: categorical
+    values:
+      - proxyless-w0.3
+  neuron_selection:
+    values:
+      # - full #used when baseline (scheme_baseline) is applied
+      - SU
+      # - velocity
+      # - random
+  scheme:
+    values:
+      # - scheme_baseline
+      # - proxyless-w0.3_scheme_1 # => There is problem with this scheme
+      - proxyless-w0.3_scheme_2
+      # - proxyless-w0.3_scheme_3
+      # - proxyless-w0.3_scheme_4
+      # - proxyless-w0.3_scheme_5
+program: ./NEq/train_classification.py
