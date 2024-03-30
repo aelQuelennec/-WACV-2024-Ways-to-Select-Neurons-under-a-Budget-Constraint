@@ -11,22 +11,17 @@ import torch.nn as nn
 from core.utils.config import config
 
 # mcunet
-from .mcunet.mcunet.model_zoo import build_model
-# from .mcunet.mcunet.utils.net_config import get_network_config_with_activation_shape
-
+from .mcunet.model_zoo import build_model
 
 def get_model(net_name):
     # mcunet and proxylessnas
-    if "mcunet" in net_name or net_name == "proxyless-w0.3":
+    if "mcunet" in net_name or net_name == "proxyless-w0.3" or net_name == "mbv2-w0.35":
         model, image_size, description = build_model(net_id=net_name, pretrained=True)
         total_neurons = 0
 
         for m in model.modules():
             if isinstance(m, nn.Conv2d):
                 total_neurons += m.weight.shape[0]
-        
-        # cfg = get_network_config_with_activation_shape(model)
-        # print(cfg) # use this information to get the structure of the mcunet
 
         return model, image_size, description, total_neurons
     elif net_name == "resnet18":

@@ -21,6 +21,10 @@ data_provider:
   # For c10, c100, vww, food101, pets and cub200 (except flowers102 because it already has a validation set)
   validation_percentage: 0.2 #(use to divide train set into train and validation)
 
+  # Use these sets for the training process?: 1 for yes, 0 for no
+  # use_validation_for_velocity: 1 # set in config.py/update_config_from_wandb() function
+  use_validation: 1
+
 run_config:
   n_epochs: 200
   base_lr: 0.125

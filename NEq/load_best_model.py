@@ -336,7 +336,7 @@ def iterate_configs(filtered_configs, filter_keys, excel_data_frame, current_lev
             if config.wandb_sweep:
                 update_config_from_wandb(wandb_config)
             # Loading model
-            if "mcunet" in config.net_config.net_name or config.net_config.net_name == "proxyless-w0.3":
+            if "mcunet" in config.net_config.net_name or config.net_config.net_name == "proxyless-w0.3" or config.net_config.net_name == "mbv2-w0.35":
                 model, config.data_provider.image_size, description, total_neurons = get_model(config.net_config.net_name)
             else:
                 model, total_neurons = get_model(config.net_config.net_name)

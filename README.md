@@ -8,33 +8,21 @@ Official repository for research presented on dynamic neuron selection at WACV 2
 
 # Reproduce our results
 
-## 1. Downloading the datasets
+## 1. Preparing dataset
 
-* [CUB-200](https://data.caltech.edu/records/65de6-vp158)
-* [Flowers-102](https://www.robots.ox.ac.uk/~vgg/data/flowers/102/index.html)
-* [Food-101](https://data.vision.ee.ethz.ch/cvl/datasets_extra/food-101/)
-* [Pets-37](https://www.robots.ox.ac.uk/~vgg/data/pets/)
-* [VWW](https://github.com/Mxbonn/visualwakewords)
+We utilized 7 datasets:
+
+* Run the python files in [train_test_split](./train_test_split/) folder from the current folder ([-WACV-2024-Ways-to-Select-Neurons-under-a-Budget-Constraint](./)) to prepare [CUB-200](https://data.caltech.edu/records/65de6-vp158), [Flowers-102](https://www.robots.ox.ac.uk/~vgg/data/flowers/102/index.html), [Food-101](https://data.vision.ee.ethz.ch/cvl/datasets_extra/food-101/), and [Pets-37](https://www.robots.ox.ac.uk/~vgg/data/pets/)
+
+* CIFAR-10 and CIFAR-100 are automatically setup in the code
+
+* Follow the instruction in [VWW](https://github.com/Mxbonn/visualwakewords) to prepare Visual Wake Words dataset
 
 The corresponding root paths must be modified in the "NEq_configs.yaml" and "NEq/core/dataset/dataset_entry.py" files.
 
 These datasets can be divided into train, test, and validation sets according to their definitions using code files stored in the [train_test_split](./train_test_split) folder.
 
-## 2. Downloading MCUNet and Proxyless
-
-```
-cd NEq/classification/models/
-
-git clone https://github.com/mit-han-lab/mcunet.git
-
-cd mcunet
-
-git checkout 8dd3347f4f47addcf68f9a220a1e2dbe4deae113
-
-cd ../../../../
-```
-
-## 3. Launching the code 
+## 2. Launching the code 
 ### With python
 
 * Install requirements.
@@ -68,7 +56,7 @@ Each agent will be responsible for running one configuration generated from the 
 
 
 
-## 4. Load the best model results
+## 3. Load the best model results
 
 After training using the Wandb sweep, the best models are saved. To log the results of these models into an Excel file, use the following command: 
 

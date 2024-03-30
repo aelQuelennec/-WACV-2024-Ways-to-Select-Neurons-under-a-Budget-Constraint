@@ -135,10 +135,11 @@ class BaseTrainer(object):
 
     def run_training(self, total_neurons, total_conv_flops, config_scheme):
         test_info_dict = None
-        val_info_dict = None
+        if config.data_provider.use_validation == 1:
+            val_info_dict = None
 
         # Computing the budget in terms of number of parameters
-        if "fixed_budget" in config_scheme or "mcunet" in config_scheme or "proxyless" in config_scheme: # As defined in NEq_configs.yaml, all MCUNet schemes's budget are defined with absolute number instead of ratio
+        if "fixed_budget" in config_scheme or "mcunet" in config_scheme or "proxyless" in config_scheme or "mbv2-w0.35" in config_scheme: # As defined in NEq_configs.yaml, all MCUNet schemes's budget are defined with absolute number instead of ratio
             config.NEq_config.glob_num_params = config.NEq_config.budget
         else:
             config.NEq_config.glob_num_params = compute_update_budget(
@@ -209,23 +210,27 @@ class BaseTrainer(object):
             logger.info(f"epoch {epoch}: f{train_info_dict}")
             
             # Validation step to compute neurons velocities
-            if not use_baseline:
-                activate_hooks(self.hooks, not use_baseline)
-                _ = self.validate("val_velocity")
+            if config.NEq_config.neuron_selection == "velocity":
+                activate_hooks(self.hooks, True)
+                self.validate("val_velocity")
+            elif config.NEq_config.neuron_selection != "full": # In case random/SU update
+                activate_hooks(self.hooks, True)
+                self.validate("activate_hook")
 
             # Validate after each epoch
-            activate_hooks(self.hooks, False)
-            val_info_dict = self.validate("val")
-            is_best_val = val_info_dict["val/top1"] > self.best_val
-            self.best_val = max(val_info_dict["val/top1"], self.best_val)
-            if is_best_val:
-                logger.info(
-                    " * New best val acc (epoch {}): {:.2f}".format(
-                        epoch, self.best_val
+            if config.data_provider.use_validation == 1:
+                activate_hooks(self.hooks, False)
+                val_info_dict = self.validate("val")
+                is_best_val = val_info_dict["val/top1"] > self.best_val
+                self.best_val = max(val_info_dict["val/top1"], self.best_val)
+                if is_best_val:
+                    logger.info(
+                        " * New best val acc (epoch {}): {:.2f}".format(
+                            epoch, self.best_val
+                        )
                     )
-                )
-            val_info_dict["val/best"] = self.best_val
-            logger.info(f"epoch {epoch}: {val_info_dict}")
+                val_info_dict["val/best"] = self.best_val
+                logger.info(f"epoch {epoch}: {val_info_dict}")
 
             # Testing step to observe accuracy evolution (after each test_per_epochs or at the last epoch)
             if (
@@ -237,17 +242,19 @@ class BaseTrainer(object):
                 test_info_dict = self.validate("test")
                 is_best_test = test_info_dict["test/top1"] > self.best_test
                 self.best_test = max(test_info_dict["test/top1"], self.best_test)
-                # Testing step to observe accuracy when valid is best
-                if is_best_val:
-                    self.test_top1_at_best_val = test_info_dict["test/top1"]
-                    logger.info(
-                        " * Valid/best at epoch {}, with Test/top1 is {:.2f}".format(
-                            epoch, test_info_dict["test/top1"]
+                # Testing step to observe accuracy when validation top 1 acc is best (only in case validation set is used):
+                if config.data_provider.use_validation == 1:
+                    if is_best_val:
+                        self.test_top1_at_best_val = test_info_dict["test/top1"]
+                        logger.info(
+                            " * Valid/best at epoch {}, with Test/top1 is {:.2f}".format(
+                                epoch, test_info_dict["test/top1"]
+                            )
                         )
-                    )
-                else:
-                    self.test_top1_at_best_val = self.test_top1_at_best_val
-                test_info_dict["test/top1_at_valid_best"] = self.test_top1_at_best_val
+                    else:
+                        self.test_top1_at_best_val = self.test_top1_at_best_val
+                    test_info_dict["test/top1_at_valid_best"] = self.test_top1_at_best_val
+                
                 if is_best_test:
                     logger.info(
                         " * New best test acc (epoch {}): {:.2f}".format(
@@ -258,44 +265,75 @@ class BaseTrainer(object):
                 logger.info(f"epoch {epoch}: {test_info_dict}")
                 #############################################
                 
-            # save model when validation acc reach its highest value
-            self.save(
-                epoch=epoch,
-                is_best=is_best_val,
-            )
+            # save model when validation acc reach its highest value, in case validation set is not used -> save model when best test
+            if config.data_provider.use_validation == 1:
+                self.save(
+                    epoch=epoch,
+                    is_best=is_best_val,
+                )
+            else:
+                self.save(
+                    epoch=epoch,
+                    is_best=is_best_test,
+                )
 
             # Logs
             if dist.rank() <= 0:
                 if use_baseline:
-                    wandb.log(
-                        {
-                            "train": train_info_dict,
-                            "valid": val_info_dict,
-                            "test": test_info_dict,
-                            "epochs": epoch,
-                            "lr": self.optimizer.param_groups[0]["lr"],
-                            "Saved parameters": log_num_saved_params,
-                        }
-                    )
+                    if config.data_provider.use_validation == 1:
+                        wandb.log(
+                            {
+                                "train": train_info_dict,
+                                "valid": val_info_dict,
+                                "test": test_info_dict,
+                                "epochs": epoch,
+                                "lr": self.optimizer.param_groups[0]["lr"],
+                                "Saved parameters": log_num_saved_params,
+                            }
+                        )
+                    else:
+                        wandb.log(
+                            {
+                                "train": train_info_dict,
+                                "test": test_info_dict,
+                                "epochs": epoch,
+                                "lr": self.optimizer.param_groups[0]["lr"],
+                                "Saved parameters": log_num_saved_params,
+                            }
+                        )
                 else:
-                    wandb.log(
-                        {
-                            "Perc of frozen conv neurons": frozen_neurons,
-                            "FLOPS stats": saved_flops,
-                            "train": train_info_dict,
-                            "valid": val_info_dict,
-                            "test": test_info_dict,
-                            "epochs": epoch,
-                            "lr": self.optimizer.param_groups[0]["lr"],
-                            "Saved parameters": log_num_saved_params,
-                        }
-                    )
+                    if config.data_provider.use_validation == 1:
+                        wandb.log(
+                            {
+                                "Perc of frozen conv neurons": frozen_neurons,
+                                "FLOPS stats": saved_flops,
+                                "train": train_info_dict,
+                                "valid": val_info_dict,
+                                "test": test_info_dict,
+                                "epochs": epoch,
+                                "lr": self.optimizer.param_groups[0]["lr"],
+                                "Saved parameters": log_num_saved_params,
+                            }
+                        )
+                    else:
+                        wandb.log(
+                            {
+                                "Perc of frozen conv neurons": frozen_neurons,
+                                "FLOPS stats": saved_flops,
+                                "train": train_info_dict,
+                                "test": test_info_dict,
+                                "epochs": epoch,
+                                "lr": self.optimizer.param_groups[0]["lr"],
+                                "Saved parameters": log_num_saved_params,
+                            }
+                        )
 
             # Not reseting grad mask and log in case of SU selection
-            if not config.NEq_config.neuron_selection == "SU":
+            if not config.NEq_config.neuron_selection == "SU": # reset mask in case velocity/random/full
                 self.grad_mask = {}
                 log_num_saved_params = {}
-            elif epoch == 0 and not config.NEq_config.initialization == "SU":
+
+            elif epoch == 0 and not config.NEq_config.initialization == "SU": # in case SU, if initialization is not SU, then init SU mask.
                 self.grad_mask = {}
                 log_num_saved_params = {}
                 config.backward_config = parsed_backward_config(
@@ -314,5 +352,3 @@ class BaseTrainer(object):
                 get_global_gradient_mask(
                     log_num_saved_params, self.hooks, self.grad_mask, epoch
                 )
-
-        return val_info_dict

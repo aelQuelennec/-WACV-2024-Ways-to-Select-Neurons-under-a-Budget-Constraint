@@ -131,9 +131,12 @@ def find_module_by_name(model, name):
 def zero_gradients(model, name, mask):
     module = find_module_by_name(model, name) # only find convolution layer because name is the name of convolution layer, which is taken from grad_mask (also is created for convolution layers)
     module.weight.grad[mask] = 0.0
-    # if getattr(module, "bias", None) is not None:
-    #     module.bias.grad[mask] = 0.0
-    # TODO : implement bias freezing depending on depth for SU update : here it's not important as mbv2 has no bias
+    if not config.NEq_config.neuron_selection == "SU":
+        if getattr(module, "bias", None) is not None:
+            module.bias.grad[mask] = 0.0
+
+@torch.no_grad()
+def zero_bias_gradients(model): # Only use for SU initialization and SU selection method
     all_conv_layers = get_all_conv_ops(model) # Get all convolution layers in the model
     for index in range(len(all_conv_layers) - config.backward_config["n_bias_update"]): # Travel through all layers having bias updated
         if getattr(all_conv_layers[index], "bias", None) is not None:
@@ -141,7 +144,6 @@ def zero_gradients(model, name, mask):
             # for name, param in all_conv_layers[index].named_parameters():
             #     if name == "bias":
             #         param.grad.zero_()
-
 
 @torch.no_grad()
 def zero_all_gradients(model):
@@ -199,9 +201,10 @@ def log_masks(model, hooks, grad_mask, total_neurons, total_conv_flops):
 # Call this function to access to a network's number of convolutional parameters
 if __name__ == "__main__":
     # load_transfer_config("transfer.yaml")#load_config_from_file("configs/transfer.yaml")
-    net_name = "proxyless-w0.3" # Fill in the name of the model needed to be measured
-    schemes = ["proxyless-w0.3_scheme_1", "proxyless-w0.3_scheme_2", "proxyless-w0.3_scheme_3", "proxyless-w0.3_scheme_4", "proxyless-w0.3_scheme_5"]
-    if "mcunet" in net_name or net_name == "proxyless-w0.3":
+    # net_name = "proxyless-w0.3" # Fill in the name of the model needed to be measured
+    schemes = ["mbv2-w0.35_scheme_1", "mbv2-w0.35_scheme_2", "mbv2-w0.35_scheme_3", "mbv2-w0.35_scheme_4", "mbv2-w0.35_scheme_5"]
+    net_name = "mbv2-w0.35"
+    if "mcunet" in net_name or net_name == "proxyless-w0.3" or net_name == "mbv2-w0.35":
         model, _, _, _ = get_model(net_name)
     else:
         model, _ = get_model(net_name)

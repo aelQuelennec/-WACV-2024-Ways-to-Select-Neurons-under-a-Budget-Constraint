@@ -8,4 +8,5 @@ easydict==1.10
 pyvww==0.1.1
 loguru==0.6.0
 timm==0.9.2
-openpyxl
+openpyxl==3.1.2
+wget==3.2

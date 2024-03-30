@@ -25,17 +25,6 @@ def load_transfer_config(file_path: str) -> None:
     if not os.path.exists(file_path):
         raise FileNotFoundError(file_path)
 
-    # assert "configs/" in file_path
-    # prefix = file_path.split("configs/")[0]
-    # file_path = file_path[len(prefix) :]
-
-    # levels = file_path.split("/")
-    # for i_level in range(len(levels)):
-    #     cur_config_path = prefix + "/".join(levels[: i_level + 1])
-    #     if os.path.exists(cur_config_path):
-    #         with open(cur_config_path, "r") as f:
-    #             _config = yaml.safe_load(f)
-    #             _iterative_update(config, _config)
     if os.path.exists(file_path):
         with open(file_path, "r") as f:
             _config = yaml.safe_load(f)
@@ -148,7 +137,7 @@ def update_config_from_wandb(wandb_config):
     config.net_config.net_name = wandb_config.net_name # Read from sweep
 
     config.NEq_config.total_num_params = wandb_sweeps_config.networks[wandb_config.net_name].total_num_params
-    if wandb_config.scheme == "scheme_fixed_budget" or "mcunet" in wandb_config.scheme or "proxyless" in wandb_config.scheme:
+    if wandb_config.scheme == "scheme_fixed_budget" or "mcunet" in wandb_config.scheme or "proxyless" in wandb_config.scheme or "mbv2-w0.35" in wandb_config.scheme:
         if "budget" in wandb_config: # If this parameter in sweep file, update from sweep.
             config.NEq_config.budget = wandb_config.budget # Read from sweep
         else: # Otherwise, update from NEq_configs.yaml
@@ -168,6 +157,13 @@ def update_config_from_wandb(wandb_config):
         config.data_provider.image_size = wandb_config.image_size # Read from sweep, it will be defined by transfer.yaml
     if "base_batch_size" in wandb_config:
         config.data_provider.base_batch_size = wandb_config.base_batch_size # Read from sweep, it will be defined by transfer.yaml
+    if "use_validation" in wandb_config:
+        config.data_provider.use_validation = wandb_config.use_validation # Read from sweep, it will be defined by transfer.yaml
+    if config.NEq_config.neuron_selection == "velocity":
+        config.data_provider.use_validation_for_velocity = 1
+    else:
+        config.data_provider.use_validation_for_velocity = 0
+    # config.data_provider.use_validation_for_velocity = 1
 
     if (
         wandb_config.scheme == "scheme_fixed_budget" and (config.NEq_config.initialization == "SU" or config.NEq_config.neuron_selection == "SU")

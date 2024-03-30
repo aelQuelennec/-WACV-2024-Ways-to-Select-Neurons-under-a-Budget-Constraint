@@ -8,7 +8,7 @@ from .base_trainer import BaseTrainer
 from ..utils.basic import DistributedMetric, accuracy
 from ..utils.config import config
 from ..utils import dist
-from general_utils import zero_gradients
+from general_utils import zero_gradients, zero_bias_gradients
 
 
 class ClassificationTrainer(BaseTrainer):
@@ -44,6 +44,7 @@ class ClassificationTrainer(BaseTrainer):
                             }
                         )
                         t.update()
+
                 return {
                         "test/top1": test_top1.avg.item(),
                         "test/loss": test_loss.avg.item(),
@@ -83,8 +84,6 @@ class ClassificationTrainer(BaseTrainer):
                 }
             # This split is performed to compute neuron velocities
             elif split == "val_velocity":
-                val_velocity_loss = DistributedMetric("val_velocity_loss")
-                val_velocity_top1 = DistributedMetric("val_velocity_top1")
                 with tqdm(
                     total=len(self.data_loader["val_velocity"]),
                     desc="Validate for velocity",
@@ -92,28 +91,22 @@ class ClassificationTrainer(BaseTrainer):
                 ) as t:
                     for images, labels in self.data_loader["val_velocity"]:
                         images, labels = images.cuda(), labels.cuda()
-                        # compute output
+                        # Compute output for hook
                         output = self.model(images)
-                        loss = val_criterion(output, labels)
-
-                        val_velocity_loss.update(loss, images.shape[0])
-                        acc1 = accuracy(output, labels, topk=(1,))[0]
-                        val_velocity_top1.update(acc1.item(), images.shape[0])
-
-                        t.set_postfix(
-                            {
-                                "loss": val_velocity_loss.avg.item(),
-                                "top1": val_velocity_top1.avg.item(),
-                                "batch_size": images.shape[0],
-                                "img_size": images.shape[2],
-                            }
-                        )
                         t.update()
-
-                return {
-                    "val_velocity/top1": val_velocity_top1.avg.item(),
-                    "val_velocity/loss": val_velocity_loss.avg.item(),
-                }
+            # The below lines of code is to get information for the hook by feeding 1 element from the test set to the model
+            elif split == "activate_hook":
+                with tqdm(
+                    total=1,
+                    desc="Activate hook",
+                    disable=dist.rank() > 0,
+                ) as t:
+                    for images, labels in self.data_loader["test"]:
+                        images, labels = images.cuda(), labels.cuda()
+                        # compute output
+                        output = self.model(images) # Feed to the model => activate hook
+                        t.update()
+                        break # Only need 1 element => break after 1st loop
 
     def train_one_epoch(self, epoch):
         self.model.train()
@@ -135,8 +128,13 @@ class ClassificationTrainer(BaseTrainer):
                 loss = self.criterion(output, labels)
                 # backward and update
                 loss.backward()
+                # Freeze all neurons in grad_mask by setting their weight gradient values to zero; and their bias gradient to zero in case of velocity and random selection
                 for k in self.grad_mask:
                     zero_gradients(self.model, k, self.grad_mask[k])
+
+                # In case of SU, setting bias gradient values of the first (number of all conv layer - n_bias_update) layers to zero
+                if (epoch == 0 and config.NEq_config.initialization == "SU") or config.NEq_config.neuron_selection == "SU":
+                    zero_bias_gradients(self.model)
 
                 self.optimizer.step()
 
