@@ -12,15 +12,11 @@ Official repository for research presented on dynamic neuron selection at WACV 2
 
 We utilized 7 datasets:
 
-* Run the python files in [train_test_split](./train_test_split/) folder from the current folder ([-WACV-2024-Ways-to-Select-Neurons-under-a-Budget-Constraint](./)) to prepare [CUB-200](https://data.caltech.edu/records/65de6-vp158), [Flowers-102](https://www.robots.ox.ac.uk/~vgg/data/flowers/102/index.html), [Food-101](https://data.vision.ee.ethz.ch/cvl/datasets_extra/food-101/), and [Pets-37](https://www.robots.ox.ac.uk/~vgg/data/pets/)
+* Run the python files in [train_test_split](./train_test_split/) folder from the current folder ([-WACV-2024-Ways-to-Select-Neurons-under-a-Budget-Constraint](./)) to prepare [CUB-200](https://data.caltech.edu/records/65de6-vp158), [Flowers-102](https://www.robots.ox.ac.uk/~vgg/data/flowers/102/index.html), [Food-101](https://data.vision.ee.ethz.ch/cvl/datasets_extra/food-101/), and [Pets-37](https://www.robots.ox.ac.uk/~vgg/data/pets/). For example, run `python3 ./train_test_split/train_test_split_pets.py` to prepare Pets dataset.
 
 * CIFAR-10 and CIFAR-100 are automatically setup in the code
 
 * Follow the instruction in [VWW](https://github.com/Mxbonn/visualwakewords) to prepare Visual Wake Words dataset
-
-The corresponding root paths must be modified in the "NEq_configs.yaml" and "NEq/core/dataset/dataset_entry.py" files.
-
-These datasets can be divided into train, test, and validation sets according to their definitions using code files stored in the [train_test_split](./train_test_split) folder.
 
 ## 2. Launching the code 
 ### With python
