@@ -10,12 +10,21 @@ import torch.nn as nn
 
 from core.utils.config import config
 
+# mcunet
+from .mcunet.model_zoo import build_model
 
-def get_model():
-    net_name = config.net_config.net_name
-    print(f"Initialize model {net_name}")
+def get_model(net_name):
+    # mcunet and proxylessnas
+    if "mcunet" in net_name or net_name == "proxyless-w0.3" or net_name == "mbv2-w0.35":
+        model, image_size, description = build_model(net_id=net_name, pretrained=True)
+        total_neurons = 0
 
-    if net_name == "resnet18":
+        for m in model.modules():
+            if isinstance(m, nn.Conv2d):
+                total_neurons += m.weight.shape[0]
+
+        return model, image_size, description, total_neurons
+    elif net_name == "resnet18":
         model = resnet18()
     elif net_name == "resnet50":
         model = resnet50()

@@ -5,7 +5,7 @@ run_dir: null
 manual_seed: 0
 resume: 0
 # Change to 0 for single training and 1 for wandb sweep
-wandb_sweep: 0
+wandb_sweep: 1
 
 data_provider:
   dataset: vww
@@ -13,10 +13,17 @@ data_provider:
   resize_scale: 0.08
   color_aug: 0.4
   base_batch_size: 32
-  n_worker: 10
-  image_size: 128
+  n_worker: 12
+  image_size: 224
   # Number of classes in target dataset for classifier head dimensions
   new_num_classes: 2
+  
+  # For c10, c100, vww, food101, pets and cub200 (except flowers102 because it already has a validation set)
+  validation_percentage: 0.2 #(use to divide train set into train and validation)
+
+  # Use these sets for the training process?: 1 for yes, 0 for no
+  # use_validation_for_velocity: 1 # set in config.py/update_config_from_wandb() function
+  use_validation: 1
 
 run_config:
   n_epochs: 200
@@ -24,14 +31,15 @@ run_config:
   warmup_epochs: 5
   warmup_lr: 0
   lr_schedule_name: cosine
+
   # wd
   weight_decay: 0
   no_wd_keys: ['norm', 'bias']
   # optimizer
   optimizer_name: sgd
   momentum: 0
-  # eval sparsely
-  eval_per_epochs: 5
+  # how many epoch should the model perform testing
+  test_per_epochs: 1
 
 net_config:
   net_name: mbv2
@@ -42,6 +50,8 @@ NEq_config:
   total_num_params: 2189760
   # Ratio of total number of parameters to use as budget
   ratio: 1
+  # In case we need to update a specific number of budget of updatable parameter instead of the ratio, only use with scheme "scheme_fixed_budget"
+  budget: 123456
   # Placeholder for budget expressed in maximal number of trainable parameters
   glob_num_params: 599040
   velocity_mu: 0.5
@@ -50,5 +60,5 @@ NEq_config:
 
 backward_config:  # for partial backward
   n_bias_update: 31  # how many conv to update the bias
-  weight_update_ratio: 1-1-1-1-1-0.5-1-1  # how many weights along input channels are updated (also support int number)
-  manual_weight_idx: 27-30-33-36-39-42-45-48
+  weight_update_ratio: 1-1-1-1-1-0.5-1-1  # how many weights along input channels are updated (also support int number) (percentage)
+  manual_weight_idx: 27-30-33-36-39-42-45-48 # index of layer to be updated by SU

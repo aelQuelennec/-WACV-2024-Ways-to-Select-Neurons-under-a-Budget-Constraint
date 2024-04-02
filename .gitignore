@@ -1,4 +1,6 @@
+*.xlsx
 # Personal additions
+raw_data/
 data/
 runs/
 nohup.out

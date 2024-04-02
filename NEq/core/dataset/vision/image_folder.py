@@ -29,8 +29,26 @@ def image_folder(root, transforms):
         target_transform=None,
     )
     test = ImageFolderFilterWarning(
-        root=os.path.join(root, "val"),
+        root=os.path.join(root, "test"),
         transform=transforms["val"],
         target_transform=None,
     )
     return train, test
+
+def FLOWERS102(root, transforms): # Because among 7 dataset, flowers102 has its own validation set
+    train = ImageFolderFilterWarning(
+        root=os.path.join(root, "train"),
+        transform=transforms["train"],
+        target_transform=None,
+    )
+    validation = ImageFolderFilterWarning(
+        root=os.path.join(root, "val"),
+        transform=transforms["val"],
+        target_transform=None,
+    )
+    test = ImageFolderFilterWarning(
+        root=os.path.join(root, "test"),
+        transform=transforms["val"],
+        target_transform=None,
+    )
+    return train, validation, test

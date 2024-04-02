@@ -78,6 +78,21 @@ def main():
     logger.info(" ".join([sys.executable] + sys.argv))
     logger.info(f'Experiment started: "{config.run_dir}".')
 
+    # Loading model
+    print(f"Initialize model {config.net_config.net_name}")
+    if "mcunet" in config.net_config.net_name or config.net_config.net_name == "proxyless-w0.3" or config.net_config.net_name == "mbv2-w0.35":
+        model, config.data_provider.image_size, description, total_neurons = get_model(config.net_config.net_name)
+
+        print("Model: ", config.net_config.net_name)
+        print("image_size: ", config.data_provider.image_size)
+        print("Description: ", description)
+        print("Total neuron: ", total_neurons)
+    else:
+        model, total_neurons = get_model(config.net_config.net_name)
+
+        print("Model: ", config.net_config.net_name)
+        print("Total neuron: ", total_neurons)
+
     dataset = build_dataset()
     data_loader = dict()
     for split in dataset:
@@ -96,11 +111,10 @@ def main():
             pin_memory=True,
             drop_last=(split == "train"),
         )
-
-    # Loading model
-    model, total_neurons = get_model()
-
-    if "mbv2" in config.net_config.net_name:
+    
+    if "mcunet" in config.net_config.net_name or config.net_config.net_name == "proxyless-w0.3" or config.net_config.net_name == "mbv2-w0.35":
+        classifier = model.classifier # Based on information from ~/.torch/mcunet/...json
+    elif "mbv2" in config.net_config.net_name:
         classifier = model.classifier[1]
     else:
         classifier = model.fc
@@ -146,28 +160,31 @@ def main():
     # Attach the hooks used to gather the PSP value
     attach_hooks(trainer.model, trainer.hooks)
 
-    # First run on validation to get the PSP for epoch -1
-    activate_hooks(trainer.hooks, True)
-    val_info_dict = trainer.validate("val")
+    # Activate the hook for the first epoch
+    if config.NEq_config.neuron_selection == "velocity":
+        activate_hooks(trainer.hooks, True)  # When velocity selection is used, activate the hook to calculate neuron velocity
+        trainer.validate("val_velocity")
+    elif config.NEq_config.neuron_selection != "full": # When random or SU is used, activate the hook and feed one image from test set to model to get information for the hook
+        activate_hooks(trainer.hooks, True)
+        trainer.validate("activate_hook")
 
     total_conv_flops = 0
-    # Save the activations into the dict + compute flops per conv layer
-    for k in trainer.hooks:
-        previous_activations[k] = trainer.hooks[k].get_samples_activation()
-        trainer.hooks[k].reset(previous_activations[k])
-        module = find_module_by_name(model, k)
-        layer_flops = compute_Conv2d_flops(module)
-        trainer.hooks[k].flops = layer_flops
-        total_conv_flops += layer_flops
+    # The 9 lines of code below is to get information for the hook. Based on that, the total_conv_flops can be calculated
+    if (wandb.config.scheme != "scheme_baseline"):
+        # Save the activations into the dict + compute flops per conv layer
+        for k in trainer.hooks:
+            previous_activations[k] = trainer.hooks[k].get_samples_activation()
+            trainer.hooks[k].reset(previous_activations[k])
+            module = find_module_by_name(model, k)
+            layer_flops = compute_Conv2d_flops(module)
+            trainer.hooks[k].flops = layer_flops
+            total_conv_flops += layer_flops
 
     # Training the model
-    val_info_dict = trainer.run_training(total_neurons, total_conv_flops)
+    trainer.run_training(total_neurons, total_conv_flops, wandb.config.scheme)
 
     if dist.rank() <= 0:
         wandb.run.finish()
-
-    return val_info_dict
-
 
 if __name__ == "__main__":
     config_file_path = get_parser()

@@ -69,6 +69,32 @@ def build_dataset():
             transforms=ImageTransform(),
         )
 
+    #Flowers 102 has its own validation set
+    elif config.data_provider.dataset == "flowers102":
+        train, validation_set, test = FLOWERS102(
+            root=config.data_provider.root,
+            transforms=ImageTransform(),
+        )
+        if config.data_provider.use_validation_for_velocity == 1 and config.data_provider.use_validation == 1:
+            validation, validation_for_velocity = split_dataset(dataset=validation_set) # Take 10 elements from validation_set
+            return {"train": train, "val": validation, "test": test, "val_velocity": validation_for_velocity}
+
+        elif config.data_provider.use_validation_for_velocity == 1 and config.data_provider.use_validation == 0:
+            _, validation_for_velocity = split_dataset(dataset = validation_set) # Take 10 elements from validation_set
+
+            train = MapDataset(train, ImageTransform()["train"])
+            validation_for_velocity = MapDataset(validation_for_velocity, ImageTransform()["val"])
+            return {"train": train, "val_velocity": validation_for_velocity, "test": test}
+
+        elif config.data_provider.use_validation_for_velocity == 0 and config.data_provider.use_validation == 1:
+            train = MapDataset(train, ImageTransform()["train"])
+            validation = MapDataset(validation_set, ImageTransform()["val"])
+            return {"train": train, "val": validation, "test": test}
+
+        elif config.data_provider.use_validation_for_velocity == 0 and config.data_provider.use_validation == 0:
+            return {"train": train, "test": test}
+        
+
     elif config.data_provider.dataset == "cifar10":
         train_dataset = torchvision.datasets.CIFAR10(
             config.data_provider.root,
@@ -99,23 +125,42 @@ def build_dataset():
 
     elif config.data_provider.dataset == "vww":
         train_dataset = pyvww.pytorch.VisualWakeWordsClassification(
-            root="/data/aquelennec/mscoco-dataset/all2014",
-            annFile="/data/aquelennec/vww-dataset/annotations/instances_train.json",
+            root="./data/vww/all2014",
+            annFile="./data/vww/annotations/instances_train2014.json",
             transform=None,
         )
         test = pyvww.pytorch.VisualWakeWordsClassification(
-            root="/data/aquelennec/mscoco-dataset/all2014",
-            annFile="/data/aquelennec/vww-dataset/annotations/instances_val.json",
+            root="./data/vww/all2014",
+            annFile="./data/vww/annotations/instances_val2014.json",
             transform=ImageTransform()["val"],
         )
 
     else:
         raise NotImplementedError(config.data_provider.dataset)
 
-    # These operations allows for the creation of a small validation dataset from which to compute velocities
-    train, validation = split_dataset(train_dataset)
-    train, validation = MapDataset(train, ImageTransform()["train"]), MapDataset(
-        validation, ImageTransform()["val"]
-    )
+    if config.data_provider.use_validation_for_velocity == 1 and config.data_provider.use_validation == 1:
+        train, validation_set = split_dataset(dataset = train_dataset, val_len = int(config.data_provider.validation_percentage * len(train_dataset))) #Divide the train_dataset into train and validation according to a predifined validation_percentage
+        validation, validation_for_velocity = split_dataset(dataset=validation_set) # Take 10 elements from validation_set
 
-    return {"train": train, "val": validation, "test": test}
+        train = MapDataset(train, ImageTransform()["train"])
+        validation = MapDataset(validation, ImageTransform()["val"])
+        validation_for_velocity = MapDataset(validation_for_velocity, ImageTransform()["val"])
+        return {"train": train, "val": validation, "test": test, "val_velocity": validation_for_velocity}
+
+    elif config.data_provider.use_validation_for_velocity == 1 and config.data_provider.use_validation == 0:
+        train, validation_for_velocity = split_dataset(dataset = train_dataset) # Take 10 elements from train_dataset
+
+        train = MapDataset(train, ImageTransform()["train"])
+        validation_for_velocity = MapDataset(validation_for_velocity, ImageTransform()["val"])
+        return {"train": train, "val_velocity": validation_for_velocity, "test": test}
+
+    elif config.data_provider.use_validation_for_velocity == 0 and config.data_provider.use_validation == 1:
+        train, validation = split_dataset(dataset = train_dataset, val_len = int(config.data_provider.validation_percentage * len(train_dataset))) #Divide the train_dataset into train and validation according to a predifined validation_percentage
+
+        train = MapDataset(train, ImageTransform()["train"])
+        validation = MapDataset(validation, ImageTransform()["val"])
+        return {"train": train, "val": validation, "test": test}
+
+    elif config.data_provider.use_validation_for_velocity == 0 and config.data_provider.use_validation == 0:
+        train = MapDataset(train_dataset, ImageTransform()["train"])
+        return {"train": train, "test": test}
