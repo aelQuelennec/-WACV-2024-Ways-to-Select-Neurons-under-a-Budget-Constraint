@@ -75,23 +75,23 @@ def build_dataset():
             root=config.data_provider.root,
             transforms=ImageTransform(),
         )
-        if config.data_provider.use_validation_for_velocity == 1 and config.data_provider.use_validation == 1:
+        if config.data_provider.use_validation_for_velocity and config.data_provider.use_validation:
             validation, validation_for_velocity = split_dataset(dataset=validation_set) # Take 10 elements from validation_set
             return {"train": train, "val": validation, "test": test, "val_velocity": validation_for_velocity}
 
-        elif config.data_provider.use_validation_for_velocity == 1 and config.data_provider.use_validation == 0:
+        elif config.data_provider.use_validation_for_velocity and not config.data_provider.use_validation:
             _, validation_for_velocity = split_dataset(dataset = validation_set) # Take 10 elements from validation_set
 
             train = MapDataset(train, ImageTransform()["train"])
             validation_for_velocity = MapDataset(validation_for_velocity, ImageTransform()["val"])
             return {"train": train, "val_velocity": validation_for_velocity, "test": test}
 
-        elif config.data_provider.use_validation_for_velocity == 0 and config.data_provider.use_validation == 1:
+        elif not config.data_provider.use_validation_for_velocity and config.data_provider.use_validation:
             train = MapDataset(train, ImageTransform()["train"])
             validation = MapDataset(validation_set, ImageTransform()["val"])
             return {"train": train, "val": validation, "test": test}
 
-        elif config.data_provider.use_validation_for_velocity == 0 and config.data_provider.use_validation == 0:
+        elif not config.data_provider.use_validation_for_velocity and not config.data_provider.use_validation:
             return {"train": train, "test": test}
         
 
@@ -138,7 +138,7 @@ def build_dataset():
     else:
         raise NotImplementedError(config.data_provider.dataset)
 
-    if config.data_provider.use_validation_for_velocity == 1 and config.data_provider.use_validation == 1:
+    if config.data_provider.use_validation_for_velocity and config.data_provider.use_validation:
         train, validation_set = split_dataset(dataset = train_dataset, val_len = int(config.data_provider.validation_percentage * len(train_dataset))) #Divide the train_dataset into train and validation according to a predifined validation_percentage
         validation, validation_for_velocity = split_dataset(dataset=validation_set) # Take 10 elements from validation_set
 
@@ -147,20 +147,20 @@ def build_dataset():
         validation_for_velocity = MapDataset(validation_for_velocity, ImageTransform()["val"])
         return {"train": train, "val": validation, "test": test, "val_velocity": validation_for_velocity}
 
-    elif config.data_provider.use_validation_for_velocity == 1 and config.data_provider.use_validation == 0:
+    elif config.data_provider.use_validation_for_velocity and not config.data_provider.use_validation:
         train, validation_for_velocity = split_dataset(dataset = train_dataset) # Take 10 elements from train_dataset
 
         train = MapDataset(train, ImageTransform()["train"])
         validation_for_velocity = MapDataset(validation_for_velocity, ImageTransform()["val"])
         return {"train": train, "val_velocity": validation_for_velocity, "test": test}
 
-    elif config.data_provider.use_validation_for_velocity == 0 and config.data_provider.use_validation == 1:
+    elif not config.data_provider.use_validation_for_velocity and config.data_provider.use_validation:
         train, validation = split_dataset(dataset = train_dataset, val_len = int(config.data_provider.validation_percentage * len(train_dataset))) #Divide the train_dataset into train and validation according to a predifined validation_percentage
 
         train = MapDataset(train, ImageTransform()["train"])
         validation = MapDataset(validation, ImageTransform()["val"])
         return {"train": train, "val": validation, "test": test}
 
-    elif config.data_provider.use_validation_for_velocity == 0 and config.data_provider.use_validation == 0:
+    elif not config.data_provider.use_validation_for_velocity and not config.data_provider.use_validation:
         train = MapDataset(train_dataset, ImageTransform()["train"])
         return {"train": train, "test": test}

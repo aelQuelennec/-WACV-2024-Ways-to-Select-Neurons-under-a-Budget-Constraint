@@ -35,7 +35,7 @@ def image_folder(root, transforms):
     )
     return train, test
 
-def FLOWERS102(root, transforms): # Because among 7 dataset, flowers102 has its own validation set
+def FLOWERS102(root, transforms): # Because among 7 datasets, flowers102 has its own validation set
     train = ImageFolderFilterWarning(
         root=os.path.join(root, "train"),
         transform=transforms["train"],

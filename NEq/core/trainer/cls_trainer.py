@@ -1,6 +1,3 @@
-from copy import deepcopy
-import os
-import pickle
 from tqdm import tqdm
 import torch
 
@@ -94,19 +91,6 @@ class ClassificationTrainer(BaseTrainer):
                         # Compute output for hook
                         output = self.model(images)
                         t.update()
-            # The below lines of code is to get information for the hook by feeding 1 element from the test set to the model
-            elif split == "activate_hook":
-                with tqdm(
-                    total=1,
-                    desc="Activate hook",
-                    disable=dist.rank() > 0,
-                ) as t:
-                    for images, labels in self.data_loader["test"]:
-                        images, labels = images.cuda(), labels.cuda()
-                        # compute output
-                        output = self.model(images) # Feed to the model => activate hook
-                        t.update()
-                        break # Only need 1 element => break after 1st loop
 
     def train_one_epoch(self, epoch):
         self.model.train()

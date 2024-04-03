@@ -92,7 +92,8 @@ def main():
 
         print("Model: ", config.net_config.net_name)
         print("Total neuron: ", total_neurons)
-
+    
+    # Loading dataset
     dataset = build_dataset()
     data_loader = dict()
     for split in dataset:
@@ -124,6 +125,10 @@ def main():
 
     # Registering input and output shapes for each module
     model.apply(add_activation_shape_hook)
+
+    with torch.no_grad():
+        sample_input = torch.randn(1, 3, 128, 128)
+        _ = model(sample_input)
 
     # setting the model to work on GPUs
     model.cuda()
@@ -164,21 +169,21 @@ def main():
     if config.NEq_config.neuron_selection == "velocity":
         activate_hooks(trainer.hooks, True)  # When velocity selection is used, activate the hook to calculate neuron velocity
         trainer.validate("val_velocity")
-    elif config.NEq_config.neuron_selection != "full": # When random or SU is used, activate the hook and feed one image from test set to model to get information for the hook
-        activate_hooks(trainer.hooks, True)
-        trainer.validate("activate_hook")
+    else: # No need to compute neuron velocities for other selection methods, feed one input to access hook information
+        with torch.no_grad():
+            _ = model(sample_input)
 
+    # Computing hooks information
     total_conv_flops = 0
-    # The 9 lines of code below is to get information for the hook. Based on that, the total_conv_flops can be calculated
-    if (wandb.config.scheme != "scheme_baseline"):
-        # Save the activations into the dict + compute flops per conv layer
-        for k in trainer.hooks:
+    for k in trainer.hooks:
+        if config.NEq_config.neuron_selection == "velocity": # Save the previous activations for velocity computation
             previous_activations[k] = trainer.hooks[k].get_samples_activation()
             trainer.hooks[k].reset(previous_activations[k])
-            module = find_module_by_name(model, k)
-            layer_flops = compute_Conv2d_flops(module)
-            trainer.hooks[k].flops = layer_flops
-            total_conv_flops += layer_flops
+        # compute flops per conv layer
+        module = find_module_by_name(model, k)
+        layer_flops = compute_Conv2d_flops(module)
+        trainer.hooks[k].flops = layer_flops
+        total_conv_flops += layer_flops
 
     # Training the model
     trainer.run_training(total_neurons, total_conv_flops, wandb.config.scheme)

@@ -68,8 +68,13 @@ def manually_initialize_grad_mask(
 ):
     def _get_conv_w_norm(_conv):
         _o, _i, _h, _w = _conv.weight.shape
-        w_norm = torch.norm(_conv.weight.data.reshape(_o, -1), dim=1)
-        assert w_norm.numel() == _conv.out_channels
+        if _is_depthwise_conv(_conv):
+            w_norm = torch.norm(_conv.weight.data.view(_o, -1), dim=1)
+        else:
+            w_norm = torch.norm(
+                _conv.weight.data.permute(1, 0, 2, 3).reshape(_i, -1), dim=1
+            )
+        assert w_norm.numel() == _conv.in_channels
         return w_norm
 
     # assume sorted
@@ -83,32 +88,37 @@ def manually_initialize_grad_mask(
     num_saved_params = 0
     num_saved_neurons = 0
     for (i_conv, conv), k in zip(enumerate(conv_ops), hooks):  # from input to output
+        this_num_param = 0
+        if i_conv > len(conv_ops) - backward_config["n_bias_update"] - 1 and getattr(conv, "bias", None) is not None:
+            this_num_param = conv.bias.numel()
         if (
             i_conv in backward_config["manual_weight_idx"]
         ):  # the weight is updated for this layer
             keep_ratio = backward_config["weight_update_ratio"][ratio_ptr]
             ratio_ptr += 1
-            n_freeze = int(conv.out_channels * (1 - keep_ratio))
-            num_saved_neurons += conv.out_channels - n_freeze
+            n_freeze = int(conv.in_channels * (1 - keep_ratio))
+            channels = conv.in_channels - n_freeze
+            num_saved_neurons += channels - n_freeze
             w_norm = _get_conv_w_norm(conv)
             grad_mask[k] = torch.argsort(w_norm)[:n_freeze]
             if _is_depthwise_conv(conv):  # depthwise
                 weight_shape = conv.weight.shape  # o, 1, k, k
-                this_num_weight = conv.in_channels * weight_shape[2] * weight_shape[3]
+                this_num_param += channels * weight_shape[2] * weight_shape[3]
             else:
                 weight_shape = conv.weight.shape  # o, i, k, k
                 if conv.groups == 1:  # normal conv
-                    this_num_weight = (
+                    this_num_param += (
                         weight_shape[0]
                         * conv.in_channels
                         * weight_shape[2]
                         * weight_shape[3]
                     )
                 else:  # group conv (lite residual)
-                    this_num_weight = conv.weight.data.numel()
-            num_saved_params += int(this_num_weight * keep_ratio)
+                    this_num_param += conv.weight.data.numel()
         else:  # this layer is completely frozen
-            grad_mask[k] = torch.tensor(range(0, conv.out_channels))
+            grad_mask[k] = torch.tensor(range(0, conv.in_channels))
+    
+        num_saved_params += this_num_param
 
     log_num_saved_params["Number of saved parameters"] = num_saved_params
     log_num_saved_params["Parameters delta with Budget"] = (

@@ -4,6 +4,18 @@ import torch
 from core.utils.config import config
 
 
+def _generate_hooks_num_params_list(hooks):
+    hooks_num_params_list = []
+    for k in hooks:
+            hooks_num_params_list.append(
+                torch.Tensor(
+                    [hooks[k].single_neuron_num_params]
+                    * hooks[k].module.out_channels
+                )
+            )
+    return hooks_num_params_list
+
+
 # Computes the velocity threshold and corresponding mask such that we update less parameters than the SU equivalent
 def _compute_velocity_budget_mask(
     hooks, grad_mask, velocity_list, hooks_num_params_list, log_num_saved_params
@@ -89,8 +101,9 @@ def compute_full_update(hooks, grad_mask, hooks_num_params_list, log_num_saved_p
 
 
 def select_mask_method(
-    hooks, grad_mask, velocity_list, hooks_num_params_list, log_num_saved_params, epoch
+    hooks, grad_mask, velocity_list, log_num_saved_params
 ):
+    hooks_num_params_list = _generate_hooks_num_params_list(hooks)
     if config.NEq_config.neuron_selection == "velocity":
         _compute_velocity_budget_mask(
             hooks,

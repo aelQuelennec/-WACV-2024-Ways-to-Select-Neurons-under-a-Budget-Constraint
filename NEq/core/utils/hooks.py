@@ -165,28 +165,22 @@ def cosine_similarity(x1, x2, dim, eps=1e-8):
 
 def get_global_gradient_mask(log_num_saved_params, hooks, grad_mask, epoch):
     velocity_list = []
-    hooks_num_params_list = []
 
-    for k in hooks:
-        _ = deepcopy(hooks[k].get_reduced_activation_delta().detach().clone())
-        _ = deepcopy(hooks[k].get_delta_of_delta().detach().clone())
-        velocity = deepcopy(hooks[k].get_velocity().detach().clone())
-        velocity_list.append(velocity / hooks[k].single_neuron_num_params)
+    if config.NEq_config.neuron_selection == "velocity":
+        for k in hooks:
+            _ = deepcopy(hooks[k].get_reduced_activation_delta().detach().clone())
+            _ = deepcopy(hooks[k].get_delta_of_delta().detach().clone())
+            velocity = deepcopy(hooks[k].get_velocity().detach().clone())
+            velocity_list.append(velocity / hooks[k].single_neuron_num_params)
 
-        hooks_num_params_list.append(
-            torch.Tensor([hooks[k].single_neuron_num_params] * len(velocity))
-        )
+            hooks[k].update_velocity()
+            hooks[k].update_delta_buffer()
 
-        hooks[k].update_velocity()
-        hooks[k].update_delta_buffer()
-
-        hooks[k].reset()
+            hooks[k].reset()
 
     select_mask_method(
         hooks,
         grad_mask,
         velocity_list,
-        hooks_num_params_list,
         log_num_saved_params,
-        epoch,
     )

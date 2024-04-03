@@ -9,7 +9,6 @@ from torch import nn
 
 from classification.models import get_model
 from core.utils.config import config, load_transfer_config
-
 from core.utils.sparse_update_tools import get_all_conv_ops
 
 
@@ -56,8 +55,8 @@ def count_net_num_conv_params(model):
     total_num_params = sum(num_params)
     print("Total num param: ", total_num_params)
 
-def count_updateable_param(model, scheme): # Use to calculate the total updatable parameter of SU scheme
 
+def count_updateable_param(model, scheme): # Use to calculate the total updatable parameter of SU scheme
     ## Same as count_net_num_conv_params
     conv_ops = [m for m in model.modules() if isinstance(m, torch.nn.Conv2d)]
     num_params = []
@@ -67,12 +66,11 @@ def count_updateable_param(model, scheme): # Use to calculate the total updatabl
             this_num_weight += conv.bias.numel()
         this_num_weight += conv.weight.numel()
         num_params.append(this_num_weight)
-    ## 
+
     import yaml
 
     with open("./NEq_configs.yaml", 'r') as file:
         NEq_configs_yaml = yaml.safe_load(file)
-    # backward_config  = NEq_configs_yaml["net_configs"][sweep_config["scheme"][0]]["SU_scheme"]
     backward_config  = NEq_configs_yaml["net_configs"][scheme]["SU_scheme"]
     
 
@@ -83,10 +81,6 @@ def count_updateable_param(model, scheme): # Use to calculate the total updatabl
         budget += float(weight_update_ratio[i])*num_params[int(manual_weight_idx[i])]
     
     print("Total updatable num param: ", budget)
-
-
-def compute_update_budget(num_conv_params, ratio):
-    return int(num_conv_params * ratio)
 
 
 def compute_Conv2d_flops(module):
@@ -129,21 +123,22 @@ def find_module_by_name(model, name):
 # Set module gradients to 0 given neurons to freeze
 @torch.no_grad()
 def zero_gradients(model, name, mask):
-    module = find_module_by_name(model, name) # only find convolution layer because name is the name of convolution layer, which is taken from grad_mask (also is created for convolution layers)
-    module.weight.grad[mask] = 0.0
-    if not config.NEq_config.neuron_selection == "SU":
+    module = find_module_by_name(model, name)
+    if not config.NEq_config.neuron_selection == "SU": # zeroing output channels
+        module.weight.grad[mask] = 0.0
         if getattr(module, "bias", None) is not None:
             module.bias.grad[mask] = 0.0
+    else: # zeroing input channels in case of SU selection
+        module.weight.grad[:, mask] = 0.0
 
+# Set bias gradients to 0 from input to a given depth (applied in SU cases)
 @torch.no_grad()
-def zero_bias_gradients(model): # Only use for SU initialization and SU selection method
-    all_conv_layers = get_all_conv_ops(model) # Get all convolution layers in the model
-    for index in range(len(all_conv_layers) - config.backward_config["n_bias_update"]): # Travel through all layers having bias updated
-        if getattr(all_conv_layers[index], "bias", None) is not None:
-            all_conv_layers[index].bias.grad[:] = 0.0 # Freeze all biases in this layer (or can use 3 lines of code below instead)
-            # for name, param in all_conv_layers[index].named_parameters():
-            #     if name == "bias":
-            #         param.grad.zero_()
+def zero_bias_gradients(model):
+    conv_ops = get_all_conv_ops(model)
+    for index in range(len(conv_ops) - config.backward_config["n_bias_update"]): # Travel through all layers having bias updated
+        if getattr(conv_ops[index], "bias", None) is not None:
+            conv_ops[index].bias.grad = torch.zeros_like(conv_ops[index].bias.grad)
+
 
 @torch.no_grad()
 def zero_all_gradients(model):
@@ -172,17 +167,27 @@ def log_masks(model, hooks, grad_mask, total_neurons, total_conv_flops):
     per_layer_saved_flops = {}
 
     for k in grad_mask:
-        frozen_neurons += grad_mask[k].shape[0]
+        this_frozen_neurons = this_frozen_neurons
+        frozen_neurons += this_frozen_neurons
 
         module = find_module_by_name(model, k)
 
         layer_flops = hooks[k].flops
-        saved_layer_flops = grad_mask[k].shape[0] / module.weight.shape[0] * layer_flops
+        if config.NEq_config.neuron_selection == "SU":
+            input_channels = module.weight.shape[1]
+            saved_layer_flops = this_frozen_neurons / input_channels * layer_flops
+            # Log the percentage of frozen neurons per layer
+            per_layer_frozen_neurons[f"{k}"] = (
+                this_frozen_neurons / input_channels * 100
+            )
+        else:
+            output_channels = module.weight.shape[0]
+            saved_layer_flops = this_frozen_neurons / output_channels * layer_flops
+            per_layer_frozen_neurons[f"{k}"] = (
+                this_frozen_neurons / output_channels * 100
+            )
         total_saved_flops += saved_layer_flops
-        # Log the percentage of frozen neurons per layer
-        per_layer_frozen_neurons[f"{k}"] = (
-            grad_mask[k].shape[0] / module.weight.shape[0] * 100
-        )
+        
         per_layer_saved_flops[f"{k}"] = saved_layer_flops
 
     # Log the total percentage of frozen neurons

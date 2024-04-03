@@ -139,11 +139,12 @@ def update_config_from_wandb(wandb_config):
     config.NEq_config.total_num_params = wandb_sweeps_config.networks[wandb_config.net_name].total_num_params
     if wandb_config.scheme == "scheme_fixed_budget" or "mcunet" in wandb_config.scheme or "proxyless" in wandb_config.scheme or "mbv2-w0.35" in wandb_config.scheme:
         if "budget" in wandb_config: # If this parameter in sweep file, update from sweep.
-            config.NEq_config.budget = wandb_config.budget # Read from sweep
+            config.NEq_config.glob_num_params = wandb_config.budget # Read from sweep
         else: # Otherwise, update from NEq_configs.yaml
-            config.NEq_config.budget = wandb_sweeps_config.net_configs[wandb_config.scheme].budget
+            config.NEq_config.glob_num_params = wandb_sweeps_config.net_configs[wandb_config.scheme].budget
     else: # Otherwise
         config.NEq_config.ratio = wandb_sweeps_config.net_configs[wandb_config.scheme].ratio
+        config.NEq_config.glob_num_params = config.NEq_config.total_num_params * config.NEq_config.ratio
 
     if "n_epochs" in wandb_config:
         config.run_config.n_epochs = wandb_config.n_epochs # Read from sweep, otherwise, it will be defined by transfer.yaml

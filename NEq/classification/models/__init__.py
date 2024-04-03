@@ -14,7 +14,7 @@ from core.utils.config import config
 from .mcunet.model_zoo import build_model
 
 def get_model(net_name):
-    # mcunet and proxylessnas
+    # MIT networks
     if "mcunet" in net_name or net_name == "proxyless-w0.3" or net_name == "mbv2-w0.35":
         model, image_size, description = build_model(net_id=net_name, pretrained=True)
         total_neurons = 0
@@ -45,6 +45,9 @@ def get_model(net_name):
 
     for m in model.modules():
         if isinstance(m, nn.Conv2d):
-            total_neurons += m.weight.shape[0]
+            if config.NEq_config.neuron_selection == "SU":
+                total_neurons += m.weight.shape[1]
+            else:
+                total_neurons += m.weight.shape[0]
 
     return model, total_neurons
