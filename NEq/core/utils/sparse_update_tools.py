@@ -89,7 +89,10 @@ def manually_initialize_grad_mask(
     num_saved_neurons = 0
     for (i_conv, conv), k in zip(enumerate(conv_ops), hooks):  # from input to output
         this_num_param = 0
-        if i_conv > len(conv_ops) - backward_config["n_bias_update"] - 1 and getattr(conv, "bias", None) is not None:
+        if (
+            i_conv > len(conv_ops) - backward_config["n_bias_update"] - 1
+            and getattr(conv, "bias", None) is not None
+        ):
             this_num_param = conv.bias.numel()
         if (
             i_conv in backward_config["manual_weight_idx"]
@@ -117,7 +120,7 @@ def manually_initialize_grad_mask(
                     this_num_param += conv.weight.data.numel()
         else:  # this layer is completely frozen
             grad_mask[k] = torch.tensor(range(0, conv.in_channels))
-    
+
         num_saved_params += this_num_param
 
     log_num_saved_params["Number of saved parameters"] = num_saved_params

@@ -25,15 +25,17 @@ def get_parser():
     )
 
     parser.add_argument(
-        "-w", "--wandb_sweep_config",
-        nargs='+',  # Accept one or more values
+        "-w",
+        "--wandb_sweep_config",
+        nargs="+",  # Accept one or more values
         type=str,
         default="./policies/test_policy.yaml",
         help="Which sweep config file to call for training",
     )
 
     parser.add_argument(
-        "-o", "--output_file",
+        "-o",
+        "--output_file",
         type=str,
         default="output.xlsx",
         help="Specify the output file store the results of best models. Supported formats are: .xlsx,.xlsm,.xltx,.xltm",
@@ -48,7 +50,6 @@ def get_parser():
 
     parsed = parser.parse_args()
 
-
     return parsed.wandb_sweep_config, parsed.config_file, parsed.output_file
 
 
@@ -59,29 +60,35 @@ def generate_config(file_path):
     Parameters:
         file_path (str): The path to the wandb sweep config file.
                          For example: 'test_policy.yaml'.
-                         
+
     Returns:
         list: A list of dictionaries, each containing a possible configuration.
     """
+
     # generate các config khả thi từ file sweep
     def _read_config(file_path):
-        with open(file_path, 'r') as file:
+        with open(file_path, "r") as file:
             config = yaml.safe_load(file)
 
-        parameters = config.get('parameters', {})
+        parameters = config.get("parameters", {})
         parameters_dict = {}
 
         for key, value in parameters.items():
-            values = value.get('values', [])
+            values = value.get("values", [])
             if len(values) == 1:
                 parameters_dict[key] = values[0]
             else:
                 parameters_dict[key] = values
 
         return EasyDict(parameters_dict)
+
     wandb_config = _read_config(file_path)
 
-    multi_value_keys = {key: wandb_config[key] for key in wandb_config if isinstance(wandb_config[key], list)}
+    multi_value_keys = {
+        key: wandb_config[key]
+        for key in wandb_config
+        if isinstance(wandb_config[key], list)
+    }
     combinations_values = product(*multi_value_keys.values())
 
     combinations = []
@@ -92,17 +99,19 @@ def generate_config(file_path):
         combinations.append(EasyDict(combination))
 
     return combinations
-    
 
 
 def load_best_model(model):
-    model_fname = os.path.join(os.path.join(config.run_dir, "checkpoint"), "ckpt.best.pth")
+    model_fname = os.path.join(
+        os.path.join(config.run_dir, "checkpoint"), "ckpt.best.pth"
+    )
     checkpoint = None
     if os.path.exists(model_fname):
         checkpoint = torch.load(model_fname, map_location="cpu")
     else:
         print("[Warning] No best model is found at ", model_fname, " !!")
     return checkpoint
+
 
 def filter_config(wandb_configs, filter_key):
     """
@@ -173,13 +182,13 @@ def filter_config_recursive(wandb_configs, filter_keys):
     # If filter_keys is empty, return wandb_configs
     if not filter_keys:
         return wandb_configs
-    
+
     filtered_configs = {}
     # Iterate through the elements of filter_keys[0]
     for key, cof in filter_config(wandb_configs, filter_keys[0]).items():
         # Use recursion to handle the remaining keys in filter_keys
         filtered_configs[key] = filter_config_recursive(cof, filter_keys[1:])
-    
+
     return filtered_configs
 
 
@@ -199,22 +208,23 @@ def calculate_mean_and_deviation(data):
     """
     # Calculate the mean
     mean = np.mean(data)
-    
+
     squared_diff = sum((x - mean) ** 2 for x in data)
     # Calculate the variance
     variance = squared_diff / (len(data) - 1)
 
     # Calculate the standard deviation
     deviation = np.sqrt(variance)
-    
+
     # Round the results to 2 decimal places
     mean = round(mean, 2)
     deviation = round(deviation, 2)
 
     return mean, deviation
-    
+
 
 from openpyxl import load_workbook, Workbook
+
 
 def export_to_excel(data, filename):
     """
@@ -246,7 +256,7 @@ def export_to_excel(data, filename):
         budget_col = 3
         initialization_col = 4
         neuron_selection_col = 5
-        
+
         # Find existing rows
         existing_rows = {}
         for row in range(2, sheet.max_row + 1):
@@ -255,11 +265,23 @@ def export_to_excel(data, filename):
             budget = sheet.cell(row=row, column=budget_col).value
             initialization = sheet.cell(row=row, column=initialization_col).value
             neuron_selection = sheet.cell(row=row, column=neuron_selection_col).value
-            existing_rows[(net_name, scheme, budget, initialization, neuron_selection)] = row
-        
+            existing_rows[
+                (net_name, scheme, budget, initialization, neuron_selection)
+            ] = row
+
         # Write or overwrite data
         for row_data in data:
-            net_name, scheme, budget, initialization, neuron_selection, valid_best, valid_best_epoch, test_top1_valid_best, best_epoch_mean = row_data
+            (
+                net_name,
+                scheme,
+                budget,
+                initialization,
+                neuron_selection,
+                valid_best,
+                valid_best_epoch,
+                test_top1_valid_best,
+                best_epoch_mean,
+            ) = row_data
             key = (net_name, scheme, budget, initialization, neuron_selection)
             if key in existing_rows:
                 row_index = existing_rows[key]
@@ -270,14 +292,26 @@ def export_to_excel(data, filename):
                 sheet.cell(row=row_index, column=9).value = best_epoch_mean
             else:
                 sheet.append(row_data)
-        
+
         # Save the workbook
         wb.save(filename)
     except FileNotFoundError:
         # If file doesn't exist, create a new one
         wb = Workbook()
         ws = wb.active
-        ws.append(["Model", "Scheme", "Budget", "Initialization", "Method", "valid/best", "valid/best at epoch", "test/top1 at valid/best", "Average Stopping Epoch"])
+        ws.append(
+            [
+                "Model",
+                "Scheme",
+                "Budget",
+                "Initialization",
+                "Method",
+                "valid/best",
+                "valid/best at epoch",
+                "test/top1 at valid/best",
+                "Average Stopping Epoch",
+            ]
+        )
         for row_data in data:
             ws.append(row_data)
         wb.save(filename)
@@ -306,7 +340,7 @@ def iterate_configs(filtered_configs, filter_keys, excel_data_frame, current_lev
 
     Example:
         If filter_keys = ['value1', 'value2'] and there are configurations filtered as follows:
-        
+
         {
             "A": {
                 "X": {value1: A; value2: X, value3: G},
@@ -319,7 +353,7 @@ def iterate_configs(filtered_configs, filter_keys, excel_data_frame, current_lev
         }
 
         The function will recursively log the result of run into 'excel_data_frame' in the following order:
-        
+
         1st: It will log the result of run with configuration {value1: A; value2: X, value3: G}
         2nd: It will log the result of run with configuration {value1: A; value2: Y, value3: G}
         3rd: It will log the result of run with configuration {value1: B; value2: X, value3: G}
@@ -336,8 +370,17 @@ def iterate_configs(filtered_configs, filter_keys, excel_data_frame, current_lev
             if config.wandb_sweep:
                 update_config_from_wandb(wandb_config)
             # Loading model
-            if "mcunet" in config.net_config.net_name or config.net_config.net_name == "proxyless-w0.3" or config.net_config.net_name == "mbv2-w0.35":
-                model, config.data_provider.image_size, description, total_neurons = get_model(config.net_config.net_name)
+            if (
+                "mcunet" in config.net_config.net_name
+                or config.net_config.net_name == "proxyless-w0.3"
+                or config.net_config.net_name == "mbv2-w0.35"
+            ):
+                (
+                    model,
+                    config.data_provider.image_size,
+                    description,
+                    total_neurons,
+                ) = get_model(config.net_config.net_name)
             else:
                 model, total_neurons = get_model(config.net_config.net_name)
             # print("Seed: ", config.manual_seed)
@@ -354,19 +397,25 @@ def iterate_configs(filtered_configs, filter_keys, excel_data_frame, current_lev
             test_top1_at_best_val.append(best_checkpoint["test_top1_at_best_val"])
             best_val.append(best_checkpoint["best_val"])
             best_at_epochs.append(best_checkpoint["epoch"])
-        
+
         # Log mean and deviation result of 'val/best' and 'test/top1 at val/best'
         if have_best_model:
-            test_top1_at_best_val_mean, test_top1_at_best_val_deviation = calculate_mean_and_deviation(test_top1_at_best_val)
+            (
+                test_top1_at_best_val_mean,
+                test_top1_at_best_val_deviation,
+            ) = calculate_mean_and_deviation(test_top1_at_best_val)
             best_val_mean, best_val_deviation = calculate_mean_and_deviation(best_val)
         else:
             test_top1_at_best_val_mean, test_top1_at_best_val_deviation = None, None
             best_val_mean, best_val_deviation = None, None
         # Log stopping epoch:
-        best_epoch_mean, best_epoch_deviation = calculate_mean_and_deviation(best_at_epochs)
+        best_epoch_mean, best_epoch_deviation = calculate_mean_and_deviation(
+            best_at_epochs
+        )
         best_epoch_mean = str(best_epoch_mean) + "\u00B1" + str(best_epoch_deviation)
         # Log budget
         from general_utils import compute_update_budget
+
         if "fixed_budget" in wandb_config.scheme or "mcunet" in wandb_config.scheme:
             budget = config.NEq_config.budget
         else:
@@ -374,34 +423,51 @@ def iterate_configs(filtered_configs, filter_keys, excel_data_frame, current_lev
                 config.NEq_config.total_num_params, config.NEq_config.ratio
             )
 
-        excel_data_frame.append([config.net_config.net_name,
-                                wandb_config.scheme,
-                                budget,
-                                wandb_config.initialization,
-                                wandb_config.neuron_selection,
-                                str(best_val_mean) + "\u00B1" + str(best_val_deviation), 
-                                str(best_at_epochs), 
-                                str(test_top1_at_best_val_mean) + "\u00B1" + str(test_top1_at_best_val_deviation),
-                                best_epoch_mean])
-        print("[Result] Model ", config.net_config.net_name, " achieves best validation result at epoch ", best_at_epochs, " with test/top1 is ", test_top1_at_best_val_mean, "\u00B1", test_top1_at_best_val_deviation)
+        excel_data_frame.append(
+            [
+                config.net_config.net_name,
+                wandb_config.scheme,
+                budget,
+                wandb_config.initialization,
+                wandb_config.neuron_selection,
+                str(best_val_mean) + "\u00B1" + str(best_val_deviation),
+                str(best_at_epochs),
+                str(test_top1_at_best_val_mean)
+                + "\u00B1"
+                + str(test_top1_at_best_val_deviation),
+                best_epoch_mean,
+            ]
+        )
+        print(
+            "[Result] Model ",
+            config.net_config.net_name,
+            " achieves best validation result at epoch ",
+            best_at_epochs,
+            " with test/top1 is ",
+            test_top1_at_best_val_mean,
+            "\u00B1",
+            test_top1_at_best_val_deviation,
+        )
         print("-------------------------------------")
         return
 
     for item_key, sub_configs in filtered_configs.items():
-        prefix = '-' * (len(filter_keys) - current_level)
-        print(prefix, " With ", filter_keys[current_level], " is ", item_key, " ", prefix)
+        prefix = "-" * (len(filter_keys) - current_level)
+        print(
+            prefix, " With ", filter_keys[current_level], " is ", item_key, " ", prefix
+        )
         # Recursion to navigate to the next level
         iterate_configs(sub_configs, filter_keys, excel_data_frame, current_level + 1)
 
 
-
 def main(wandb_config_path, transfer_config_path, output_file):
-
     load_transfer_config(transfer_config_path)
     wandb_configs = generate_config(wandb_config_path)
-    print("================ Model: ", wandb_configs[0]["net_name"], " ================ ")
+    print(
+        "================ Model: ", wandb_configs[0]["net_name"], " ================ "
+    )
     excel_data_frame = []
-    
+
     """
     The program will filter combinations of configurations generated from the original sweep 
     file according to the order of keys in filter_keys (similar to how WanDB works)
@@ -426,9 +492,8 @@ def main(wandb_config_path, transfer_config_path, output_file):
 
     # A recursive function to iterate through the layers of dictionaries created above, where 'manual_seed' is the deepest layer
     iterate_configs(filtered_configs, filter_keys, excel_data_frame)
-    
-    export_to_excel(data=excel_data_frame, filename=output_file)
 
+    export_to_excel(data=excel_data_frame, filename=output_file)
 
 
 if __name__ == "__main__":

@@ -45,7 +45,7 @@ class BaseTrainer(object):
         self.criterion = criterion
 
         self.best_test = 0.0
-        self.test_top1_at_best_val = 0.0 # Log top-1 test accuracy of the model when its top-1 validation accuracy reachs the highest value
+        self.test_top1_at_best_val = 0.0  # Log top-1 test accuracy of the model when its top-1 validation accuracy reachs the highest value
         self.best_val = 0.0
         self.start_epoch = 0
 
@@ -110,7 +110,10 @@ class BaseTrainer(object):
                 logger.info("!!! best_val not found in checkpoint")
             if "test_top1_at_best_val" in checkpoint:
                 self.test_top1_at_best_val = checkpoint["test_top1_at_best_val"]
-                logger.info("loaded test_top1_at_best_val: %f" % checkpoint["test_top1_at_best_val"])
+                logger.info(
+                    "loaded test_top1_at_best_val: %f"
+                    % checkpoint["test_top1_at_best_val"]
+                )
             else:
                 logger.info("!!! test_top1_at_best_val not found in checkpoint")
             if "optimizer" in checkpoint:
@@ -184,21 +187,28 @@ class BaseTrainer(object):
                             )
                         )
                     compute_full_update(
-                        self.hooks, self.grad_mask, hooks_num_params_list, log_num_saved_params
+                        self.hooks,
+                        self.grad_mask,
+                        hooks_num_params_list,
+                        log_num_saved_params,
                     )
 
             # Log the amount of frozen neurons
-            use_baseline = (config_scheme == "scheme_baseline")
+            use_baseline = config_scheme == "scheme_baseline"
             if not use_baseline:
                 frozen_neurons, saved_flops = log_masks(
-                    self.model, self.hooks, self.grad_mask, total_neurons, total_conv_flops
+                    self.model,
+                    self.hooks,
+                    self.grad_mask,
+                    total_neurons,
+                    total_conv_flops,
                 )
 
             # Train step
             activate_hooks(self.hooks, False)
             train_info_dict = self.train_one_epoch(epoch)
             logger.info(f"epoch {epoch}: f{train_info_dict}")
-            
+
             # Validation step to compute neurons velocities
             if config.NEq_config.neuron_selection == "velocity":
                 activate_hooks(self.hooks, True)
@@ -222,8 +232,8 @@ class BaseTrainer(object):
             # Testing step to observe accuracy evolution (after each test_per_epochs or at the last epoch)
             if (
                 (epoch + 1) % config.run_config.test_per_epochs == 0
-                or 
-                epoch == config.run_config.n_epochs + config.run_config.warmup_epochs - 1
+                or epoch
+                == config.run_config.n_epochs + config.run_config.warmup_epochs - 1
             ):
                 activate_hooks(self.hooks, False)
                 test_info_dict = self.validate("test")
@@ -238,8 +248,10 @@ class BaseTrainer(object):
                                 epoch, test_info_dict["test/top1"]
                             )
                         )
-                    test_info_dict["test/top1_at_valid_best"] = self.test_top1_at_best_val
-                
+                    test_info_dict[
+                        "test/top1_at_valid_best"
+                    ] = self.test_top1_at_best_val
+
                 if is_best_test:
                     logger.info(
                         " * New best test acc (epoch {}): {:.2f}".format(
@@ -249,7 +261,7 @@ class BaseTrainer(object):
                 test_info_dict["test/best"] = self.best_test
                 logger.info(f"epoch {epoch}: {test_info_dict}")
                 #############################################
-                
+
             # save model when validation acc reach its highest value, in case validation set is not used -> save model when best test
             if config.data_provider.use_validation:
                 self.save(
@@ -267,27 +279,32 @@ class BaseTrainer(object):
                 if use_baseline:
                     saved_flops = None
                 wandb.log(
-                        {
-                            "Perc of frozen conv neurons": frozen_neurons,
-                            "FLOPS stats": saved_flops,
-                            "train": train_info_dict,
-                            "valid": val_info_dict,
-                            "test": test_info_dict,
-                            "epochs": epoch,
-                            "lr": self.optimizer.param_groups[0]["lr"],
-                            "Saved parameters": log_num_saved_params,
-                        }
+                    {
+                        "Perc of frozen conv neurons": frozen_neurons,
+                        "FLOPS stats": saved_flops,
+                        "train": train_info_dict,
+                        "valid": val_info_dict,
+                        "test": test_info_dict,
+                        "epochs": epoch,
+                        "lr": self.optimizer.param_groups[0]["lr"],
+                        "Saved parameters": log_num_saved_params,
+                    }
                 )
 
             # Not reseting grad mask and log in case of static selection
-            if not config.NEq_config.neuron_selection == "SU" or not config.NEq_config.neuron_selection == "full":
+            if (
+                not config.NEq_config.neuron_selection == "SU"
+                or not config.NEq_config.neuron_selection == "full"
+            ):
                 self.grad_mask = {}
                 log_num_saved_params = {}
                 get_global_gradient_mask(
                     log_num_saved_params, self.hooks, self.grad_mask, epoch
                 )
 
-            elif epoch == 0 and not config.NEq_config.initialization == "SU": # in case SU selection but not initialization, then init SU mask.
+            elif (
+                epoch == 0 and not config.NEq_config.initialization == "SU"
+            ):  # in case SU selection but not initialization, then init SU mask.
                 self.grad_mask = {}
                 log_num_saved_params = {}
                 config.backward_config = parsed_backward_config(
@@ -300,4 +317,3 @@ class BaseTrainer(object):
                     config.backward_config,
                     log_num_saved_params,
                 )
-                

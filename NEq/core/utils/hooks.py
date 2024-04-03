@@ -49,16 +49,15 @@ class Hook:
         self.active = True
 
         if _is_depthwise_conv(self.module):
-          self.single_neuron_num_params = (
-              self.module.weight.shape[2]
-              * self.module.weight.shape[3]
-          )
+            self.single_neuron_num_params = (
+                self.module.weight.shape[2] * self.module.weight.shape[3]
+            )
         else:
-          self.single_neuron_num_params = (
-              self.module.in_channels
-              * self.module.weight.shape[2]
-              * self.module.weight.shape[3]
-          )
+            self.single_neuron_num_params = (
+                self.module.in_channels
+                * self.module.weight.shape[2]
+                * self.module.weight.shape[3]
+            )
         if self.module.bias is not None:
             self.single_neuron_num_params += 1
 

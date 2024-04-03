@@ -56,7 +56,9 @@ def count_net_num_conv_params(model):
     print("Total num param: ", total_num_params)
 
 
-def count_updateable_param(model, scheme): # Use to calculate the total updatable parameter of SU scheme
+def count_updateable_param(
+    model, scheme
+):  # Use to calculate the total updatable parameter of SU scheme
     ## Same as count_net_num_conv_params
     conv_ops = [m for m in model.modules() if isinstance(m, torch.nn.Conv2d)]
     num_params = []
@@ -69,17 +71,16 @@ def count_updateable_param(model, scheme): # Use to calculate the total updatabl
 
     import yaml
 
-    with open("./NEq_configs.yaml", 'r') as file:
+    with open("./NEq_configs.yaml", "r") as file:
         NEq_configs_yaml = yaml.safe_load(file)
-    backward_config  = NEq_configs_yaml["net_configs"][scheme]["SU_scheme"]
-    
+    backward_config = NEq_configs_yaml["net_configs"][scheme]["SU_scheme"]
 
     weight_update_ratio = backward_config["weight_update_ratio"].split("-")
     manual_weight_idx = backward_config["manual_weight_idx"].split("-")
     budget = 0
     for i in range(len(manual_weight_idx)):
-        budget += float(weight_update_ratio[i])*num_params[int(manual_weight_idx[i])]
-    
+        budget += float(weight_update_ratio[i]) * num_params[int(manual_weight_idx[i])]
+
     print("Total updatable num param: ", budget)
 
 
@@ -124,18 +125,21 @@ def find_module_by_name(model, name):
 @torch.no_grad()
 def zero_gradients(model, name, mask):
     module = find_module_by_name(model, name)
-    if not config.NEq_config.neuron_selection == "SU": # zeroing output channels
+    if not config.NEq_config.neuron_selection == "SU":  # zeroing output channels
         module.weight.grad[mask] = 0.0
         if getattr(module, "bias", None) is not None:
             module.bias.grad[mask] = 0.0
-    else: # zeroing input channels in case of SU selection
+    else:  # zeroing input channels in case of SU selection
         module.weight.grad[:, mask] = 0.0
+
 
 # Set bias gradients to 0 from input to a given depth (applied in SU cases)
 @torch.no_grad()
 def zero_bias_gradients(model):
     conv_ops = get_all_conv_ops(model)
-    for index in range(len(conv_ops) - config.backward_config["n_bias_update"]): # Travel through all layers having bias updated
+    for index in range(
+        len(conv_ops) - config.backward_config["n_bias_update"]
+    ):  # Travel through all layers having bias updated
         if getattr(conv_ops[index], "bias", None) is not None:
             conv_ops[index].bias.grad = torch.zeros_like(conv_ops[index].bias.grad)
 
@@ -187,7 +191,7 @@ def log_masks(model, hooks, grad_mask, total_neurons, total_conv_flops):
                 this_frozen_neurons / output_channels * 100
             )
         total_saved_flops += saved_layer_flops
-        
+
         per_layer_saved_flops[f"{k}"] = saved_layer_flops
 
     # Log the total percentage of frozen neurons
@@ -207,7 +211,13 @@ def log_masks(model, hooks, grad_mask, total_neurons, total_conv_flops):
 if __name__ == "__main__":
     # load_transfer_config("transfer.yaml")#load_config_from_file("configs/transfer.yaml")
     # net_name = "proxyless-w0.3" # Fill in the name of the model needed to be measured
-    schemes = ["mbv2-w0.35_scheme_1", "mbv2-w0.35_scheme_2", "mbv2-w0.35_scheme_3", "mbv2-w0.35_scheme_4", "mbv2-w0.35_scheme_5"]
+    schemes = [
+        "mbv2-w0.35_scheme_1",
+        "mbv2-w0.35_scheme_2",
+        "mbv2-w0.35_scheme_3",
+        "mbv2-w0.35_scheme_4",
+        "mbv2-w0.35_scheme_5",
+    ]
     net_name = "mbv2-w0.35"
     if "mcunet" in net_name or net_name == "proxyless-w0.3" or net_name == "mbv2-w0.35":
         model, _, _, _ = get_model(net_name)

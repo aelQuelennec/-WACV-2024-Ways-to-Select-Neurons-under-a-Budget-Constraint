@@ -80,8 +80,14 @@ def main():
 
     # Loading model
     print(f"Initialize model {config.net_config.net_name}")
-    if "mcunet" in config.net_config.net_name or config.net_config.net_name == "proxyless-w0.3" or config.net_config.net_name == "mbv2-w0.35":
-        model, config.data_provider.image_size, description, total_neurons = get_model(config.net_config.net_name)
+    if (
+        "mcunet" in config.net_config.net_name
+        or config.net_config.net_name == "proxyless-w0.3"
+        or config.net_config.net_name == "mbv2-w0.35"
+    ):
+        model, config.data_provider.image_size, description, total_neurons = get_model(
+            config.net_config.net_name
+        )
 
         print("Model: ", config.net_config.net_name)
         print("image_size: ", config.data_provider.image_size)
@@ -92,7 +98,7 @@ def main():
 
         print("Model: ", config.net_config.net_name)
         print("Total neuron: ", total_neurons)
-    
+
     # Loading dataset
     dataset = build_dataset()
     data_loader = dict()
@@ -112,9 +118,15 @@ def main():
             pin_memory=True,
             drop_last=(split == "train"),
         )
-    
-    if "mcunet" in config.net_config.net_name or config.net_config.net_name == "proxyless-w0.3" or config.net_config.net_name == "mbv2-w0.35":
-        classifier = model.classifier # Based on information from ~/.torch/mcunet/...json
+
+    if (
+        "mcunet" in config.net_config.net_name
+        or config.net_config.net_name == "proxyless-w0.3"
+        or config.net_config.net_name == "mbv2-w0.35"
+    ):
+        classifier = (
+            model.classifier
+        )  # Based on information from ~/.torch/mcunet/...json
     elif "mbv2" in config.net_config.net_name:
         classifier = model.classifier[1]
     else:
@@ -167,16 +179,20 @@ def main():
 
     # Activate the hook for the first epoch
     if config.NEq_config.neuron_selection == "velocity":
-        activate_hooks(trainer.hooks, True)  # When velocity selection is used, activate the hook to calculate neuron velocity
+        activate_hooks(
+            trainer.hooks, True
+        )  # When velocity selection is used, activate the hook to calculate neuron velocity
         trainer.validate("val_velocity")
-    else: # No need to compute neuron velocities for other selection methods, feed one input to access hook information
+    else:  # No need to compute neuron velocities for other selection methods, feed one input to access hook information
         with torch.no_grad():
             _ = model(sample_input)
 
     # Computing hooks information
     total_conv_flops = 0
     for k in trainer.hooks:
-        if config.NEq_config.neuron_selection == "velocity": # Save the previous activations for velocity computation
+        if (
+            config.NEq_config.neuron_selection == "velocity"
+        ):  # Save the previous activations for velocity computation
             previous_activations[k] = trainer.hooks[k].get_samples_activation()
             trainer.hooks[k].reset(previous_activations[k])
         # compute flops per conv layer
@@ -190,6 +206,7 @@ def main():
 
     if dist.rank() <= 0:
         wandb.run.finish()
+
 
 if __name__ == "__main__":
     config_file_path = get_parser()

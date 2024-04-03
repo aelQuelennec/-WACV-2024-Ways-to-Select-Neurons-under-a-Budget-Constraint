@@ -13,7 +13,7 @@ class ClassificationTrainer(BaseTrainer):
         self.model.eval()
         val_criterion = self.criterion  # torch.nn.CrossEntropyLoss()
 
-        with torch.no_grad(): # Make sure no gradient is calculated during evaluation mode
+        with torch.no_grad():  # Make sure no gradient is calculated during evaluation mode
             # This split evaluates the performance of the model on the testing set
             if split == "test":
                 test_loss = DistributedMetric("test_loss")
@@ -43,9 +43,9 @@ class ClassificationTrainer(BaseTrainer):
                         t.update()
 
                 return {
-                        "test/top1": test_top1.avg.item(),
-                        "test/loss": test_loss.avg.item(),
-                    }
+                    "test/top1": test_top1.avg.item(),
+                    "test/loss": test_loss.avg.item(),
+                }
             # This split evaluates the performance of the model on the validation set
             elif split == "val":
                 val_loss = DistributedMetric("val_loss")
@@ -117,7 +117,9 @@ class ClassificationTrainer(BaseTrainer):
                     zero_gradients(self.model, k, self.grad_mask[k])
 
                 # In case of SU, setting bias gradient values of the first (number of all conv layer - n_bias_update) layers to zero
-                if (epoch == 0 and config.NEq_config.initialization == "SU") or config.NEq_config.neuron_selection == "SU":
+                if (
+                    epoch == 0 and config.NEq_config.initialization == "SU"
+                ) or config.NEq_config.neuron_selection == "SU":
                     zero_bias_gradients(self.model)
 
                 self.optimizer.step()

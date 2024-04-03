@@ -123,8 +123,7 @@ def update_config_from_wandb(wandb_config):
         _config = yaml.safe_load(f)
         _iterative_update(wandb_sweeps_config, _config)
 
-
-    config.manual_seed = wandb_config.manual_seed # Read from sweep
+    config.manual_seed = wandb_config.manual_seed  # Read from sweep
 
     # Read dataset config
     dataset_config = wandb_sweeps_config.dataset_configs[wandb_config.dataset]
@@ -132,47 +131,80 @@ def update_config_from_wandb(wandb_config):
     config.data_provider.root = dataset_config.root
     config.data_provider.new_num_classes = dataset_config.new_num_classes
 
-    config.NEq_config.neuron_selection = wandb_config.neuron_selection # Read from sweep
-    config.NEq_config.initialization = wandb_config.initialization # Read from sweep
-    config.net_config.net_name = wandb_config.net_name # Read from sweep
+    config.NEq_config.neuron_selection = (
+        wandb_config.neuron_selection
+    )  # Read from sweep
+    config.NEq_config.initialization = wandb_config.initialization  # Read from sweep
+    config.net_config.net_name = wandb_config.net_name  # Read from sweep
 
-    config.NEq_config.total_num_params = wandb_sweeps_config.networks[wandb_config.net_name].total_num_params
-    if wandb_config.scheme == "scheme_fixed_budget" or "mcunet" in wandb_config.scheme or "proxyless" in wandb_config.scheme or "mbv2-w0.35" in wandb_config.scheme:
-        if "budget" in wandb_config: # If this parameter in sweep file, update from sweep.
-            config.NEq_config.glob_num_params = wandb_config.budget # Read from sweep
-        else: # Otherwise, update from NEq_configs.yaml
-            config.NEq_config.glob_num_params = wandb_sweeps_config.net_configs[wandb_config.scheme].budget
-    else: # Otherwise
-        config.NEq_config.ratio = wandb_sweeps_config.net_configs[wandb_config.scheme].ratio
-        config.NEq_config.glob_num_params = config.NEq_config.total_num_params * config.NEq_config.ratio
+    config.NEq_config.total_num_params = wandb_sweeps_config.networks[
+        wandb_config.net_name
+    ].total_num_params
+    if (
+        wandb_config.scheme == "scheme_fixed_budget"
+        or "mcunet" in wandb_config.scheme
+        or "proxyless" in wandb_config.scheme
+        or "mbv2-w0.35" in wandb_config.scheme
+    ):
+        if (
+            "budget" in wandb_config
+        ):  # If this parameter in sweep file, update from sweep.
+            config.NEq_config.glob_num_params = wandb_config.budget  # Read from sweep
+        else:  # Otherwise, update from NEq_configs.yaml
+            config.NEq_config.glob_num_params = wandb_sweeps_config.net_configs[
+                wandb_config.scheme
+            ].budget
+    else:  # Otherwise
+        config.NEq_config.ratio = wandb_sweeps_config.net_configs[
+            wandb_config.scheme
+        ].ratio
+        config.NEq_config.glob_num_params = (
+            config.NEq_config.total_num_params * config.NEq_config.ratio
+        )
 
     if "n_epochs" in wandb_config:
-        config.run_config.n_epochs = wandb_config.n_epochs # Read from sweep, otherwise, it will be defined by transfer.yaml
+        config.run_config.n_epochs = (
+            wandb_config.n_epochs
+        )  # Read from sweep, otherwise, it will be defined by transfer.yaml
     if "base_lr" in wandb_config:
-        config.run_config.base_lr = wandb_config.base_lr # Read from sweep, otherwise, it will be defined by transfer.yaml
-    if "lr_schedule_name" in wandb_config:    
-        config.run_config.lr_schedule_name = wandb_config.lr_schedule_name # Read from sweep, it will be defined by transfer.yaml
+        config.run_config.base_lr = (
+            wandb_config.base_lr
+        )  # Read from sweep, otherwise, it will be defined by transfer.yaml
+    if "lr_schedule_name" in wandb_config:
+        config.run_config.lr_schedule_name = (
+            wandb_config.lr_schedule_name
+        )  # Read from sweep, it will be defined by transfer.yaml
     if "optimizer_name" in wandb_config:
-        config.run_config.optimizer_name = wandb_config.optimizer_name # Read from sweep, it will be defined by transfer.yaml
+        config.run_config.optimizer_name = (
+            wandb_config.optimizer_name
+        )  # Read from sweep, it will be defined by transfer.yaml
     if "image_size" in wandb_config:
-        config.data_provider.image_size = wandb_config.image_size # Read from sweep, it will be defined by transfer.yaml
+        config.data_provider.image_size = (
+            wandb_config.image_size
+        )  # Read from sweep, it will be defined by transfer.yaml
     if "base_batch_size" in wandb_config:
-        config.data_provider.base_batch_size = wandb_config.base_batch_size # Read from sweep, it will be defined by transfer.yaml
+        config.data_provider.base_batch_size = (
+            wandb_config.base_batch_size
+        )  # Read from sweep, it will be defined by transfer.yaml
     if "use_validation" in wandb_config:
-        config.data_provider.use_validation = wandb_config.use_validation # Read from sweep, it will be defined by transfer.yaml
+        config.data_provider.use_validation = (
+            wandb_config.use_validation
+        )  # Read from sweep, it will be defined by transfer.yaml
     if config.NEq_config.neuron_selection == "velocity":
         config.data_provider.use_validation_for_velocity = 1
     else:
         config.data_provider.use_validation_for_velocity = 0
     # config.data_provider.use_validation_for_velocity = 1
 
-    if (
-        wandb_config.scheme == "scheme_fixed_budget" and (config.NEq_config.initialization == "SU" or config.NEq_config.neuron_selection == "SU")
+    if wandb_config.scheme == "scheme_fixed_budget" and (
+        config.NEq_config.initialization == "SU"
+        or config.NEq_config.neuron_selection == "SU"
     ):
         print("!! Warning, SU update can not apply with fixed budget scheme !!")
 
     if (
-        config.NEq_config.initialization == "SU" or config.NEq_config.neuron_selection == "SU"
+        config.NEq_config.initialization == "SU"
+        or config.NEq_config.neuron_selection == "SU"
     ):
         backward_config = wandb_sweeps_config.net_configs[wandb_config.scheme].SU_scheme
         config.backward_config.n_bias_update = backward_config.n_bias_update

@@ -13,6 +13,7 @@ from core.utils.config import config
 # mcunet
 from .mcunet.model_zoo import build_model
 
+
 def get_model(net_name):
     # MIT networks
     if "mcunet" in net_name or net_name == "proxyless-w0.3" or net_name == "mbv2-w0.35":
