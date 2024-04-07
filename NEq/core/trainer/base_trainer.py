@@ -37,10 +37,8 @@ class BaseTrainer(object):
         lr_scheduler,
         hooks,
         grad_mask,
-        classifier,
     ):
         self.model = model
-        self.classifier = classifier
         self.data_loader = data_loader
         self.criterion = criterion
 

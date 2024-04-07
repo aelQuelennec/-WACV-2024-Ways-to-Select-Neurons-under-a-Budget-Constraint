@@ -119,20 +119,21 @@ def main():
             drop_last=(split == "train"),
         )
 
-    if (
-        "mcunet" in config.net_config.net_name
-        or config.net_config.net_name == "proxyless-w0.3"
-        or config.net_config.net_name == "mbv2-w0.35"
-    ):
-        # Based on information from ~/.torch/mcunet/...json
-        classifier = model.classifier
-    elif "mbv2" in config.net_config.net_name:
-        classifier = model.classifier[1]
-    else:
-        classifier = model.fc
-    # Change classifier head in case of fine-tuning
+    # change classifier head in case of fine-tuning
     if config.net_config.fine_tuning:
-        classifier = change_classifier_head(classifier)
+        if (
+            "mcunet" in config.net_config.net_name
+            or config.net_config.net_name == "proxyless-w0.3"
+            or config.net_config.net_name == "mbv2-w0.35"
+        ):
+            # Based on information from ~/.torch/mcunet/...json
+            model.classifier = change_classifier_head(model.classifier)
+        elif "mbv2" in config.net_config.net_name:
+            model.classifier[1] = change_classifier_head(model.classifier[1])
+        elif "vgg16" in config.net_config.net_name:
+            model.classifier[6] = change_classifier_head(model.classifier[6])
+        else:
+            model.fc = change_classifier_head(model.fc)
 
     # Registering input and output shapes for each module
     model.apply(add_activation_shape_hook)
