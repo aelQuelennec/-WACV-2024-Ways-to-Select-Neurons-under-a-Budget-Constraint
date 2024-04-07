@@ -36,7 +36,7 @@ def cleanup():
 
 
 def change_classifier_head(classifier):
-    classifier = nn.Linear(
+    return nn.Linear(
         in_features=classifier.in_features,
         out_features=config.data_provider.new_num_classes,
         bias=True,

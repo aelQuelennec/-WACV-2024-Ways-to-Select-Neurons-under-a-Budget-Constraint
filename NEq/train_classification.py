@@ -132,7 +132,7 @@ def main():
         classifier = model.fc
     # Change classifier head in case of fine-tuning
     if config.net_config.fine_tuning:
-        change_classifier_head(classifier)
+        classifier = change_classifier_head(classifier)
 
     # Registering input and output shapes for each module
     model.apply(add_activation_shape_hook)
