@@ -124,9 +124,8 @@ def main():
         or config.net_config.net_name == "proxyless-w0.3"
         or config.net_config.net_name == "mbv2-w0.35"
     ):
-        classifier = (
-            model.classifier
-        )  # Based on information from ~/.torch/mcunet/...json
+        # Based on information from ~/.torch/mcunet/...json
+        classifier = model.classifier
     elif "mbv2" in config.net_config.net_name:
         classifier = model.classifier[1]
     else:
