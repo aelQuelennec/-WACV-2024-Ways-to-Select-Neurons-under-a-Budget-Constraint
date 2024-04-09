@@ -43,6 +43,10 @@ def change_classifier_head(classifier):
     )
 
 
+def is_depthwise_conv(conv):
+    return conv.groups == conv.in_channels == conv.out_channels
+
+
 def count_net_num_conv_params(model):
     conv_ops = [m for m in model.modules() if isinstance(m, torch.nn.Conv2d)]
     num_params = []
@@ -130,7 +134,10 @@ def zero_gradients(model, name, mask):
         if getattr(module, "bias", None) is not None:
             module.bias.grad[mask] = 0.0
     else:  # zeroing input channels in case of SU selection
-        module.weight.grad[:, mask] = 0.0
+        if is_depthwise_conv(module):
+            module.weight.grad[mask] = 0.0
+        else:
+            module.weight.grad[:, mask] = 0.0
 
 
 # Set bias gradients to 0 from input to a given depth (applied in SU cases)

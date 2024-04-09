@@ -1,9 +1,6 @@
 import torch
+from general_utils import is_depthwise_conv
 from core.utils.config import config
-
-
-def _is_depthwise_conv(conv):
-    return conv.groups == conv.in_channels == conv.out_channels
 
 
 def _is_pw1(conv):  # for mbnets
@@ -68,7 +65,7 @@ def manually_initialize_grad_mask(
 ):
     def _get_conv_w_norm(_conv):
         _o, _i, _h, _w = _conv.weight.shape
-        if _is_depthwise_conv(_conv):
+        if is_depthwise_conv(_conv):
             w_norm = torch.norm(_conv.weight.data.view(_o, -1), dim=1)
         else:
             w_norm = torch.norm(
@@ -104,7 +101,7 @@ def manually_initialize_grad_mask(
             num_saved_neurons += channels - n_freeze
             w_norm = _get_conv_w_norm(conv)
             grad_mask[k] = torch.argsort(w_norm)[:n_freeze]
-            if _is_depthwise_conv(conv):  # depthwise
+            if is_depthwise_conv(conv):  # depthwise
                 weight_shape = conv.weight.shape  # o, 1, k, k
                 this_num_param += channels * weight_shape[2] * weight_shape[3]
             else:
